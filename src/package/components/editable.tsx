@@ -289,7 +289,6 @@ export const Editable = (props: EditableProps) => {
 	onMount(() => {
 		// Update element-related weak maps with the DOM element ref.
 		let window;
-		console.log("DOM NODE ERROR: ", ref);
 		if (ref && (window = getDefaultView(ref))) {
 			EDITOR_TO_WINDOW.set(editor, window);
 			EDITOR_TO_ELEMENT.set(editor, ref);

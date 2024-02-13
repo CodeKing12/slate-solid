@@ -48,8 +48,13 @@ const useChildren = (props: {
 			}
 		}
 
+		// Beware we moved this code to run before the component is pushed to the array so that when the component calls the hook, we will be able to find the path to the component node
+		NODE_TO_INDEX.set(n, i);
+		NODE_TO_PARENT.set(n, props.node);
+		console.log("Set Parent");
+
 		if (Element.isElement(n)) {
-			console.log("Didn;t reach here");
+			// console.log("Didn;t reach here");
 			children.push(
 				// Beware key={`provider-${key.id}`}
 				<SelectedContext.Provider value={!!sel}>
@@ -65,7 +70,7 @@ const useChildren = (props: {
 					/>
 				</SelectedContext.Provider>
 			);
-			console.log("I DID REACH reach here");
+			// console.log("I DID REACH reach here");
 		} else {
 			children.push(
 				<TextComponent
@@ -80,10 +85,6 @@ const useChildren = (props: {
 				/>
 			);
 		}
-
-		NODE_TO_INDEX.set(n, i);
-		NODE_TO_PARENT.set(n, props.node);
-		console.log("Set Parent");
 	}
 
 	return children;
