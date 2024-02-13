@@ -1,4 +1,4 @@
-import { createMemo, onMount } from "solid-js";
+import { Match, Switch, createMemo } from "solid-js";
 import isHotkey from "is-hotkey";
 import { Editable, withSolid, useSlate, Slate } from "./package";
 import { Editor, Transforms, createEditor, Descendant, Element as SlateElement } from "slate";
@@ -20,11 +20,6 @@ const App = () => {
 	const renderLeaf = (props: any) => <Leaf {...props} />;
 	const editor = createMemo(() => withSolid(createEditor()));
 	console.log(editor());
-
-	onMount(() => {
-		const channel = new BroadcastChannel("debug");
-		channel.addEventListener("message", (e) => console.log(e));
-	});
 
 	return (
 		<Slate editor={editor()} initialValue={initialValue}>
@@ -123,50 +118,45 @@ const isMarkActive = (editor: any, format: any) => {
 
 const Element = (props: { attributes: any; children: any; element: any }) => {
 	const style = { textAlign: props.element.align };
-	switch (props.element.type) {
-		case "block-quote":
-			return (
+	return (
+		<Switch>
+			<Match when={props.element.type === "block-quote"}>
 				<blockquote style={style} {...props.attributes}>
 					{props.children}
 				</blockquote>
-			);
-		case "bulleted-list":
-			return (
+			</Match>
+			<Match when={props.element.type === "bulleted-list"}>
 				<ul style={style} {...props.attributes}>
 					{props.children}
 				</ul>
-			);
-		case "heading-one":
-			return (
+			</Match>
+			<Match when={props.element.type === "heading-one"}>
 				<h1 style={style} {...props.attributes}>
 					{props.children}
 				</h1>
-			);
-		case "heading-two":
-			return (
+			</Match>
+			<Match when={props.element.type === "heading-two"}>
 				<h2 style={style} {...props.attributes}>
 					{props.children}
 				</h2>
-			);
-		case "list-item":
-			return (
+			</Match>
+			<Match when={props.element.type === "list-item"}>
 				<li style={style} {...props.attributes}>
 					{props.children}
 				</li>
-			);
-		case "numbered-list":
-			return (
+			</Match>
+			<Match when={props.element.type === "numbered-list"}>
 				<ol style={style} {...props.attributes}>
 					{props.children}
 				</ol>
-			);
-		default:
-			return (
+			</Match>
+			<Match when={props.element.type}>
 				<p style={style} {...props.attributes}>
 					{props.children}
 				</p>
-			);
-	}
+			</Match>
+		</Switch>
+	);
 };
 
 const Leaf = (props: { attributes: any; children: any; leaf: any }) => {
