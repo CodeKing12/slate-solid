@@ -18,7 +18,7 @@ type RestoreDOMProps = {
 
 // We're using SolidJS effect and cleanup functions to replicate the behavior of componentDidMount, componentDidUpdate, and componentWillUnmount
 const RestoreDOMComponent = (props: RestoreDOMProps): JSXElement => {
-	const editor = useContext(EditorContext);
+	const editorContext = useContext(EditorContext);
 	const [manager, setManager] = createSignal<RestoreDOMManager | null>(null);
 	const [mutationObserver, setMutationObserver] = createSignal<MutationObserver | null>(null);
 
@@ -31,8 +31,8 @@ const RestoreDOMComponent = (props: RestoreDOMProps): JSXElement => {
 
 	// Similar to componentDidMount
 	onMount(() => {
-		if (editor) {
-			const newManager = createRestoreDomManager(editor, props.receivedUserInput);
+		if (editorContext().editor()) {
+			const newManager = createRestoreDomManager(editorContext().editor(), props.receivedUserInput);
 			setManager(() => newManager);
 			const newMutationObserver = new MutationObserver(newManager.registerMutations);
 			setMutationObserver(() => newMutationObserver);

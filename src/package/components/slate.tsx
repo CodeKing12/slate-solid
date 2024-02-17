@@ -44,11 +44,11 @@ export const Slate = (props: {
 		}
 		split.editor.children = split.initialValue;
 		Object.assign(split.editor, rest);
-		return { v: 0, editor: split.editor } as SlateContextValue;
+		return { v: 0, editor: () => split.editor } as SlateContextValue;
 	}
 	const [context, setContext] = createSignal<SlateContextValue>(getInitialContextValue());
 
-	const { selectorContext, onChange: handleSelectorChange } = useSelectorContext(split.editor);
+	const selectorData = () => useSelectorContext(split.editor);
 
 	const onContextChange = (options?: { operation?: Operation }) => {
 		if (split.onChange) {
@@ -65,9 +65,9 @@ export const Slate = (props: {
 
 		setContext((prevContext) => ({
 			v: prevContext.v + 1,
-			editor: split.editor,
+			editor: () => split.editor,
 		}));
-		handleSelectorChange(split.editor);
+		selectorData()().onChange(split.editor);
 	};
 
 	createEffect(() => {
@@ -80,9 +80,9 @@ export const Slate = (props: {
 
 	const [isFocused, setIsFocused] = createSignal(SolidEditor.isFocused(split.editor));
 
-	createEffect(() => {
-		setIsFocused(SolidEditor.isFocused(split.editor));
-	});
+	// createEffect(() => {
+	// 	setIsFocused(SolidEditor.isFocused(split.editor));
+	// });
 
 	useIsomorphicLayoutEffect(() => {
 		const fn = () => setIsFocused(SolidEditor.isFocused(split.editor));
@@ -107,11 +107,13 @@ export const Slate = (props: {
 		// }
 	}, []);
 
+	const getSelectorContext = () => selectorData()().selectorContext();
+
 	return (
-		<SlateSelectorContext.Provider value={selectorContext()}>
-			<SlateContext.Provider value={context()}>
-				<EditorContext.Provider value={context().editor}>
-					<FocusedContext.Provider value={isFocused()}>{split.children}</FocusedContext.Provider>
+		<SlateSelectorContext.Provider value={getSelectorContext}>
+			<SlateContext.Provider value={context}>
+				<EditorContext.Provider value={context}>
+					<FocusedContext.Provider value={isFocused}>{split.children}</FocusedContext.Provider>
 				</EditorContext.Provider>
 			</SlateContext.Provider>
 		</SlateSelectorContext.Provider>

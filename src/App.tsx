@@ -1,6 +1,6 @@
-import { Match, Switch, createMemo } from "solid-js";
+import { Match, Switch, createMemo, createRenderEffect, createSignal } from "solid-js";
 import isHotkey from "is-hotkey";
-import { Editable, withSolid, useSlate, Slate } from "./package";
+import { Editable, withSolid, useSlate, Slate, SolidEditor } from "./package";
 import { Editor, Transforms, createEditor, Descendant, Element as SlateElement } from "slate";
 
 import { Button, Icon, Toolbar } from "./components";
@@ -19,7 +19,6 @@ const App = () => {
 	const renderElement = (props: any) => <Element {...props} />;
 	const renderLeaf = (props: any) => <Leaf {...props} />;
 	const editor = createMemo(() => withSolid(createEditor()));
-	console.log(editor());
 
 	return (
 		<Slate editor={editor()} initialValue={initialValue}>
@@ -58,7 +57,7 @@ const App = () => {
 	);
 };
 
-const toggleBlock = (editor: any, format: any) => {
+const toggleBlock = (editor: SolidEditor, format: any) => {
 	const isActive = isBlockActive(editor, format, TEXT_ALIGN_TYPES.includes(format) ? "align" : "type");
 	const isList = LIST_TYPES.includes(format);
 
@@ -98,7 +97,7 @@ const toggleMark = (editor: any, format: any) => {
 	}
 };
 
-const isBlockActive = (editor: any, format: any, blockType = "type") => {
+const isBlockActive = (editor: SolidEditor, format: any, blockType = "type") => {
 	if (!editor.selection) return false;
 
 	const [match] = Array.from(
@@ -111,47 +110,47 @@ const isBlockActive = (editor: any, format: any, blockType = "type") => {
 	return !!match;
 };
 
-const isMarkActive = (editor: any, format: any) => {
+const isMarkActive = (editor: SolidEditor, format: any) => {
 	const marks = Editor.marks(editor);
 	return marks ? marks[format] === true : false;
 };
 
 const Element = (props: { attributes: any; children: any; element: any }) => {
-	const style = { textAlign: props.element.align };
+	const style = () => ({ "text-align": props.element.align });
 	return (
 		<Switch>
 			<Match when={props.element.type === "block-quote"}>
-				<blockquote style={style} {...props.attributes}>
+				<blockquote style={style()} {...props.attributes}>
 					{props.children}
 				</blockquote>
 			</Match>
 			<Match when={props.element.type === "bulleted-list"}>
-				<ul style={style} {...props.attributes}>
+				<ul style={style()} {...props.attributes}>
 					{props.children}
 				</ul>
 			</Match>
 			<Match when={props.element.type === "heading-one"}>
-				<h1 style={style} {...props.attributes}>
+				<h1 style={style()} {...props.attributes}>
 					{props.children}
 				</h1>
 			</Match>
 			<Match when={props.element.type === "heading-two"}>
-				<h2 style={style} {...props.attributes}>
+				<h2 style={style()} {...props.attributes}>
 					{props.children}
 				</h2>
 			</Match>
 			<Match when={props.element.type === "list-item"}>
-				<li style={style} {...props.attributes}>
+				<li style={style()} {...props.attributes}>
 					{props.children}
 				</li>
 			</Match>
 			<Match when={props.element.type === "numbered-list"}>
-				<ol style={style} {...props.attributes}>
+				<ol style={style()} {...props.attributes}>
 					{props.children}
 				</ol>
 			</Match>
 			<Match when={props.element.type}>
-				<p style={style} {...props.attributes}>
+				<p style={style()} {...props.attributes}>
 					{props.children}
 				</p>
 			</Match>
@@ -160,35 +159,37 @@ const Element = (props: { attributes: any; children: any; element: any }) => {
 };
 
 const Leaf = (props: { attributes: any; children: any; leaf: any }) => {
-	let children = props.children;
+	let [children, setChildren] = createSignal(props.children);
 
-	if (props.leaf.bold) {
-		children = <strong>{props.children}</strong>;
-	}
+	createRenderEffect(() => {
+		if (props.leaf.bold) {
+			setChildren(<strong>{props.children}</strong>);
+		}
 
-	if (props.leaf.code) {
-		children = <code>{props.children}</code>;
-	}
+		if (props.leaf.code) {
+			setChildren(<code>{props.children}</code>);
+		}
 
-	if (props.leaf.italic) {
-		children = <em>{props.children}</em>;
-	}
+		if (props.leaf.italic) {
+			setChildren(<em>{props.children}</em>);
+		}
 
-	if (props.leaf.underline) {
-		children = <u>{props.children}</u>;
-	}
+		if (props.leaf.underline) {
+			setChildren(<u>{props.children}</u>);
+		}
+	});
 
-	return <span {...props.attributes}>{children}</span>;
+	return <span {...props.attributes}>{children()}</span>;
 };
 
 const BlockButton = (props: { format: any; icon: any }) => {
 	const editor = useSlate();
 	return (
 		<Button
-			active={isBlockActive(editor, props.format, TEXT_ALIGN_TYPES.includes(props.format) ? "align" : "type")}
+			active={isBlockActive(editor(), props.format, TEXT_ALIGN_TYPES.includes(props.format) ? "align" : "type")}
 			onMouseDown={(event: MouseEvent) => {
 				event.preventDefault();
-				toggleBlock(editor, props.format);
+				toggleBlock(editor(), props.format);
 			}}
 		>
 			<Icon>{props.icon}</Icon>
@@ -200,10 +201,10 @@ const MarkButton = (props: { format: any; icon: any }) => {
 	const editor = useSlate();
 	return (
 		<Button
-			active={isMarkActive(editor, props.format)}
+			active={isMarkActive(editor(), props.format)}
 			onMouseDown={(event: MouseEvent) => {
 				event.preventDefault();
-				toggleMark(editor, props.format);
+				toggleMark(editor(), props.format);
 			}}
 		>
 			<Icon>{props.icon}</Icon>

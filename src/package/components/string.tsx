@@ -1,4 +1,4 @@
-import { createSignal, mergeProps } from "solid-js";
+import { createRenderEffect, createSignal, mergeProps } from "solid-js";
 import { Editor, Text, Path, Element, Node } from "slate";
 
 // index index-fix
@@ -14,42 +14,52 @@ import { MARK_PLACEHOLDER_SYMBOL } from "../utils/weak-maps";
 
 const String = (props: { isLast: boolean; leaf: Text; parent: Element; text: Text }) => {
 	const editor = useSlateStatic();
-	const path = SolidEditor.findPath(editor, props.text);
-	const parentPath = Path.parent(path);
-	const isMarkPlaceholder = Boolean(props.leaf[MARK_PLACEHOLDER_SYMBOL]);
+	const path = () => SolidEditor.findPath(editor(), props.text);
+	const parentPath = () => Path.parent(path());
+	const isMarkPlaceholder = () => Boolean(props.leaf[MARK_PLACEHOLDER_SYMBOL]);
+
+	let jsx = <TextString text={props.leaf.text} />;
 
 	// COMPAT: Render text inside void nodes with a zero-width space.
 	// So the node can contain selection but the text is not visible.
-	if (editor.isVoid(props.parent)) {
-		return <ZeroWidthString length={Node.string(props.parent).length} />;
-	}
+	createRenderEffect(() => {
+		if (editor().isVoid(props.parent)) {
+			jsx = <ZeroWidthString length={Node.string(props.parent).length} />;
+		}
+	});
 
 	// COMPAT: If this is the last text node in an empty block, render a zero-
 	// width space that will convert into a line break when copying and pasting
 	// to support expected plain text.
-	if (
-		props.leaf.text === "" &&
-		props.parent.children[props.parent.children.length - 1] === props.text &&
-		!editor.isInline(props.parent) &&
-		Editor.string(editor, parentPath) === ""
-	) {
-		return <ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder} />;
-	}
+	createRenderEffect(() => {
+		if (
+			props.leaf.text === "" &&
+			props.parent.children[props.parent.children.length - 1] === props.text &&
+			!editor().isInline(props.parent) &&
+			Editor.string(editor(), parentPath()) === ""
+		) {
+			jsx = <ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder()} />;
+		}
+	});
 
 	// COMPAT: If the text is empty, it's because it's on the edge of an inline
 	// node, so we render a zero-width space so that the selection can be
 	// inserted next to it still.
-	if (props.leaf.text === "") {
-		return <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder} />;
-	}
+	createRenderEffect(() => {
+		if (props.leaf.text === "") {
+			jsx = <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />;
+		}
+	});
 
 	// COMPAT: Browsers will collapse trailing new lines at the end of blocks,
 	// so we need to add an extra trailing new lines to prevent that.
-	if (props.isLast && props.leaf.text.slice(-1) === "\n") {
-		return <TextString isTrailing text={props.leaf.text} />;
-	}
+	createRenderEffect(() => {
+		if (props.isLast && props.leaf.text.slice(-1) === "\n") {
+			jsx = <TextString isTrailing text={props.leaf.text} />;
+		}
+	});
 
-	return <TextString text={props.leaf.text} />;
+	return jsx;
 };
 
 /**
@@ -93,7 +103,7 @@ const TextString = (props: { text: string; isTrailing?: boolean }) => {
 	// We defer to the layout effect above to update the `textContent` of the span element when needed.
 	// return <MemoizedText ref={ref}>{initialText}</MemoizedText>;
 	return (
-		<span data-slate-string ref={ref}>
+		<span data-slate-string="true" ref={ref}>
 			{initialText()()}
 		</span>
 	);
@@ -124,18 +134,20 @@ export const ZeroWidthString = (props: { length?: number; isLineBreak?: boolean;
 		props
 	);
 
-	const attributes: {
+	const attributes: () => {
 		"data-slate-zero-width": string;
 		"data-slate-length": number;
 		"data-slate-mark-placeholder"?: boolean;
-	} = {
+	} = () => ({
 		"data-slate-zero-width": merge.isLineBreak ? "n" : "z",
 		"data-slate-length": length,
-	};
+	});
 
-	if (merge.isMarkPlaceholder) {
-		attributes["data-slate-mark-placeholder"] = true;
-	}
+	createRenderEffect(() => {
+		if (merge.isMarkPlaceholder) {
+			attributes()["data-slate-mark-placeholder"] = true;
+		}
+	});
 
 	return (
 		<span {...attributes}>

@@ -7,7 +7,7 @@ import { useIsMounted } from "../use-is-mounted";
 import { useMutationObserver } from "../use-mutation-observer";
 
 type UseAndroidInputManagerOptions = {
-	node: HTMLElement;
+	node: HTMLElement | null;
 } & Omit<CreateAndroidInputManagerOptions, "editor" | "onUserInput" | "receivedUserInput">;
 
 const MUTATION_OBSERVER_CONFIG: MutationObserverInit = {
@@ -29,14 +29,14 @@ export const useAndroidInputManager = !IS_ANDROID
 
 			const [inputManager] = createSignal(
 				createAndroidInputManager({
-					editor,
+					editor: editor(),
 					...options,
 				})
 			);
 
 			useMutationObserver(split.node, inputManager().handleDomMutations, MUTATION_OBSERVER_CONFIG);
 
-			EDITOR_TO_SCHEDULE_FLUSH.set(editor, inputManager().scheduleFlush);
+			EDITOR_TO_SCHEDULE_FLUSH.set(editor(), inputManager().scheduleFlush);
 			if (isMounted) {
 				inputManager().flush();
 			}

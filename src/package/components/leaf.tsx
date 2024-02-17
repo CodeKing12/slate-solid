@@ -1,8 +1,8 @@
-import { createSignal, createEffect, JSX, mergeProps } from "solid-js";
+import { createSignal, createEffect, JSX, mergeProps, createRenderEffect } from "solid-js";
 import { Element, Text } from "slate";
 import { ResizeObserver as ResizeObserverPolyfill } from "@juggle/resize-observer";
 import String from "./string";
-import { PLACEHOLDER_SYMBOL, EDITOR_TO_PLACEHOLDER_ELEMENT, EDITOR_TO_FORCE_RENDER } from "../utils/weak-maps";
+import { PLACEHOLDER_SYMBOL, EDITOR_TO_PLACEHOLDER_ELEMENT } from "../utils/weak-maps";
 import { RenderLeafProps, RenderPlaceholderProps } from "./editable";
 import { useSlateStatic } from "../hooks/use-slate-static";
 import { IS_WEBKIT, IS_ANDROID } from "../utils/environment";
@@ -60,10 +60,10 @@ const Leaf = (props: {
 		disconnectPlaceholderResizeObserver(placeholderResizeObserver, placeholderEl == null);
 
 		if (placeholderEl == null) {
-			EDITOR_TO_PLACEHOLDER_ELEMENT.delete(editor);
+			EDITOR_TO_PLACEHOLDER_ELEMENT.delete(editor());
 			merge.leaf.onPlaceholderResize?.(null);
 		} else {
-			EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor, placeholderEl);
+			EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor(), placeholderEl);
 
 			if (!placeholderResizeObserver) {
 				// Create a new observer and observe the placeholder element.
@@ -73,15 +73,16 @@ const Leaf = (props: {
 				});
 			}
 			placeholderResizeObserver.observe(placeholderEl);
+			console.log("Got to placeholder ref");
 			placeholderRef = placeholderEl;
 		}
 	};
 
 	let children = <String isLast={merge.isLast} leaf={merge.leaf} parent={merge.parent} text={merge.text} />;
 
-	const leafIsPlaceholder = Boolean(merge.leaf[PLACEHOLDER_SYMBOL]);
+	const leafIsPlaceholder = () => Boolean(merge.leaf[PLACEHOLDER_SYMBOL]);
 	createEffect(() => {
-		if (leafIsPlaceholder) {
+		if (leafIsPlaceholder()) {
 			if (!showPlaceholderTimeoutRef) {
 				// Delay the placeholder, so it will not render in a selection
 				showPlaceholderTimeoutRef = setTimeout(() => {
@@ -96,36 +97,38 @@ const Leaf = (props: {
 		return () => clearTimeoutRef(showPlaceholderTimeoutRef);
 	});
 
-	if (leafIsPlaceholder && showPlaceholder()) {
-		const placeholderProps: RenderPlaceholderProps = {
-			children: merge.leaf.placeholder,
-			attributes: {
-				"data-slate-placeholder": true,
-				style: {
-					position: "absolute",
-					top: 0,
-					"pointer-events": "none",
-					width: "100%",
-					"max-width": "100%",
-					display: "block",
-					opacity: "0.333",
-					"user-select": "none",
-					"text-decoration": "none",
-					// Fixes https://github.com/udecode/plate/issues/2315
-					"-webkit-user-modify": IS_WEBKIT ? "inherit" : undefined,
+	createRenderEffect(() => {
+		if (leafIsPlaceholder() && showPlaceholder()) {
+			const placeholderProps: RenderPlaceholderProps = {
+				children: merge.leaf.placeholder,
+				attributes: {
+					"data-slate-placeholder": true,
+					style: {
+						position: "absolute",
+						top: 0,
+						"pointer-events": "none",
+						width: "100%",
+						"max-width": "100%",
+						display: "block",
+						opacity: "0.333",
+						"user-select": "none",
+						"text-decoration": "none",
+						// Fixes https://github.com/udecode/plate/issues/2315
+						"-webkit-user-modify": IS_WEBKIT ? "inherit" : undefined,
+					},
+					contentEditable: false,
+					ref: callbackPlaceholderRef,
 				},
-				contentEditable: false,
-				ref: callbackPlaceholderRef,
-			},
-		};
+			};
 
-		children = (
-			<>
-				{merge.renderPlaceholder(placeholderProps)}
-				{children}
-			</>
-		);
-	}
+			children = (
+				<>
+					{merge.renderPlaceholder(placeholderProps)}
+					{children}
+				</>
+			);
+		}
+	});
 
 	// COMPAT: Having the `data-` attributes on these leaf elements ensures that
 	// in certain misbehaving browsers they aren't weirdly cloned/destroyed by
@@ -136,7 +139,7 @@ const Leaf = (props: {
 		"data-slate-leaf": true,
 	};
 
-	return merge.renderLeaf({ attributes, children, leaf: merge.leaf, text: merge.text });
+	return <>{merge.renderLeaf({ attributes, children, leaf: merge.leaf, text: merge.text })}</>;
 };
 
 // Beware

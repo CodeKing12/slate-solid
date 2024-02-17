@@ -1,4 +1,4 @@
-import { createContext, useContext } from "solid-js";
+import { Accessor, createContext, useContext } from "solid-js";
 import { Editor } from "slate";
 import { SolidEditor } from "../plugin/solid-editor";
 
@@ -9,25 +9,24 @@ import { SolidEditor } from "../plugin/solid-editor";
 
 export interface SlateContextValue {
 	v: number;
-	editor: SolidEditor;
+	editor: () => SolidEditor;
 }
 
-export const SlateContext = createContext<SlateContextValue | null>(null);
+export const SlateContext = createContext<Accessor<SlateContextValue> | null>(null);
 
 /**
  * Get the current editor object from the React context.
  */
 
 // Beware
-export const useSlate = (): SolidEditor => {
+export const useSlate = () => {
 	const context = useContext(SlateContext);
 
 	if (!context) {
 		throw new Error(`The \`useSlate\` hook must be used inside the <Slate> component's context.`);
 	}
 
-	const { editor } = context;
-	return editor;
+	return context().editor;
 };
 
 export const useSlateWithV = () => {

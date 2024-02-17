@@ -1,4 +1,4 @@
-import { createContext, useContext, createMemo } from "solid-js";
+import { createContext, useContext, createMemo, createSignal } from "solid-js";
 import { createReducer } from "@solid-primitives/memo";
 import { Editor } from "slate";
 import { useIsomorphicLayoutEffect } from "./use-isomorphic-layout-effect";
@@ -12,10 +12,12 @@ type EditorChangeHandler = (editor: Editor) => void;
  * A React context for sharing the editor selector context in a way to control rerenders
  */
 
-export const SlateSelectorContext = createContext<{
-	getSlate: () => Editor;
-	addEventListener: (callback: EditorChangeHandler) => () => void;
-}>({} as any);
+export const SlateSelectorContext = createContext<
+	() => {
+		getSlate: () => Editor;
+		addEventListener: (callback: EditorChangeHandler) => () => void;
+	}
+>(() => ({} as any));
 
 const refEquality = (a: any, b: any) => a === b;
 
@@ -34,10 +36,9 @@ export function useSlateSelector<T>(
 ) {
 	const [, forceRender] = createReducer((s) => s + 1, 0);
 	const context = useContext(SlateSelectorContext);
-	if (!context) {
+	if (!context()) {
 		throw new Error(`The \`useSlateSelector\` hook must be used inside the <Slate> component's context.`);
 	}
-	const { getSlate, addEventListener } = context;
 
 	let latestSubscriptionCallbackError: Error | undefined;
 	let latestSelector: (editor: Editor) => T = () => null as any;
@@ -46,7 +47,7 @@ export function useSlateSelector<T>(
 
 	try {
 		if (selector !== latestSelector || latestSubscriptionCallbackError) {
-			selectedState = selector(getSlate());
+			selectedState = selector(context().getSlate());
 		} else {
 			selectedState = latestSelectedState;
 		}
@@ -67,7 +68,7 @@ export function useSlateSelector<T>(
 		() => {
 			function checkForUpdates() {
 				try {
-					const newSelectedState = latestSelector(getSlate());
+					const newSelectedState = latestSelector(context().getSlate());
 
 					if (equalityFn(newSelectedState, latestSelectedState)) {
 						return;
@@ -89,14 +90,14 @@ export function useSlateSelector<T>(
 				forceRender();
 			}
 
-			const unsubscribe = addEventListener(checkForUpdates);
+			const unsubscribe = context().addEventListener(checkForUpdates);
 
 			checkForUpdates();
 
 			return () => unsubscribe();
 		},
 		// don't rerender on equalityFn change since we want to be able to define it inline
-		[addEventListener, getSlate]
+		[addEventListener, context().getSlate]
 	);
 
 	return selectedState;
@@ -107,19 +108,20 @@ export function useSlateSelector<T>(
  */
 export function useSelectorContext(editor: Editor) {
 	const eventListeners: EditorChangeHandler[] = [];
-	const slateRef: {
+	const [slateRef, setSlateRef] = createSignal<{
 		editor: Editor;
-	} = {
+	}>({
 		editor,
-	};
+	});
 	const onChange = (editor: Editor) => {
-		slateRef.editor = editor;
+		setSlateRef((prev) => ({ ...prev, editor: editor }));
 		eventListeners.forEach((listener: EditorChangeHandler) => listener(editor));
 	};
 
-	const selectorContext = createMemo(() => {
+	// Beware createMemo
+	const selectorContext = () => {
 		return {
-			getSlate: () => slateRef.editor,
+			getSlate: () => slateRef().editor,
 			addEventListener: (callback: EditorChangeHandler) => {
 				eventListeners.push(callback);
 				return () => {
@@ -127,7 +129,14 @@ export function useSelectorContext(editor: Editor) {
 				};
 			},
 		};
-	}, [eventListeners, slateRef]);
-	return { selectorContext, onChange };
+	};
+	// Beware }, [eventListeners, slateRef]);
+
+	const getValue = () => ({
+		selectorContext,
+		onChange,
+	});
+
+	return getValue;
 }
 

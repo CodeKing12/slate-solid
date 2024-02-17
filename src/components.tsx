@@ -45,11 +45,12 @@ export const EditorValue = (
 ) => {
 	const [local, attributes] = splitProps(props, ["class", "value"]);
 
-	const textLines = local.value.document.nodes
-		// Beware any
-		.map((node: any) => node.text)
-		.toArray()
-		.join("\n");
+	// Beware any
+	const textLines = () =>
+		local.value.document.nodes
+			.map((node: any) => node.text)
+			.toArray()
+			.join("\n");
 
 	return (
 		<div
@@ -84,7 +85,7 @@ export const EditorValue = (
 					}
 				`}
 			>
-				{textLines}
+				{textLines()}
 			</div>
 			{/* Beware manual added-manually */}
 			{attributes.children}
