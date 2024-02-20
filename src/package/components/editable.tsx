@@ -8,6 +8,7 @@ import {
 	createSignal,
 	JSX,
 	mergeProps,
+	on,
 	onCleanup,
 	onMount,
 	splitProps,
@@ -17,7 +18,7 @@ import { createReducer } from "@solid-primitives/memo";
 import scrollIntoView from "scroll-into-view-if-needed";
 import { Editor, Element, Node, NodeEntry, Path, Range, Text, Transforms } from "slate";
 import { useAndroidInputManager } from "../hooks/android-input-manager/use-android-input-manager";
-import useChildren from "../hooks/use-children";
+// import useChildren from "../hooks/use-children";
 import { DecorateContext } from "../hooks/use-decorate";
 import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
 import { ReadOnlyContext } from "../hooks/use-read-only";
@@ -65,12 +66,12 @@ import {
 import { RestoreDOM } from "./restore-dom/restore-dom";
 import { AndroidInputManager } from "../hooks/android-input-manager/android-input-manager";
 import { Dynamic } from "solid-js/web";
-import { BaseElement } from "slate";
+import Children from "../hooks/use-children";
 
 type DeferredOperation = () => void;
 type EventTargets = { currentTarget: HTMLDivElement; target: DOMElement };
 
-const Children = (props: Parameters<typeof useChildren>[0]) => <>{useChildren(props)}</>;
+// const Children = (props: Parameters<typeof useChildren>[0]) => <>{useChildren(props)}</>;
 
 /**
  * `RenderElementProps` are passed to the `renderElement` handler.
@@ -168,21 +169,21 @@ export const Editable = (props: EditableProps) => {
 		},
 		local
 	);
-	const editor = useSlate();
-	createEffect(() => console.log("Editor Updated: ", editor()));
-	// Rerender editor() when composition status changed
+	const [editor, setEditor] = useSlate();
+	createEffect(() => console.log("Editor Children Updated: ", editor.children));
+	// Rerender editor when composition status changed
 	const [isComposing, setIsComposing] = createSignal(false);
 	let ref: HTMLDivElement | null = null;
 	const [deferredOperations, setDeferredOperations] = createSignal<DeferredOperation[]>([]);
 	const [placeholderHeight, setPlaceholderHeight] = createSignal<number | undefined>();
 
-	const { onUserInput, receivedUserInput } = useTrackUserInput();
+	const userInputData = useTrackUserInput();
 
 	const [, forceRender] = createReducer((s) => s + 1, 0);
-	createRenderEffect(() => EDITOR_TO_FORCE_RENDER.set(editor(), forceRender));
+	createRenderEffect(() => EDITOR_TO_FORCE_RENDER.set(editor, forceRender));
 
 	// Update internal state on each render.
-	createRenderEffect(() => IS_READ_ONLY.set(editor(), merged.readOnly));
+	createRenderEffect(() => IS_READ_ONLY.set(editor, merged.readOnly));
 
 	// Keep track of some state for the event handler logic.
 	const state = createMemo(() => ({
@@ -194,12 +195,14 @@ export const Editable = (props: EditableProps) => {
 
 	// The autoFocus TextareaHTMLAttribute doesn't do anything on a div, so it
 	// needs to be manually focused.
-	createEffect(() => {
-		if (ref && merged.autofocus) {
-			console.log("Focusing Div");
-			ref.focus();
-		}
-	});
+	createEffect(
+		on([() => merged.autofocus], () => {
+			if (ref && merged.autofocus) {
+				console.log("Focusing Div");
+				ref.focus();
+			}
+		})
+	);
 
 	/**
 	 * The AndroidInputManager object has a cyclical dependency on onDOMSelectionChange
@@ -225,72 +228,74 @@ export const Editable = (props: EditableProps) => {
 	};
 
 	const onDOMSelectionChange = createMemo(
-		() =>
+		on([() => editor, () => merged.readOnly, state], () =>
 			throttle(() => {
 				console.log("Called this throttler");
 				const androidInputManager = androidInputManagerRef;
 				if (
-					(IS_ANDROID || !SolidEditor.isComposing(editor())) &&
+					(IS_ANDROID || !SolidEditor.isComposing(editor)) &&
 					(!state().isUpdatingSelection || androidInputManager?.isFlushing()) &&
 					!state().isDraggingInternally
 				) {
-					const root = SolidEditor.findDocumentOrShadowRoot(editor());
-					const el = SolidEditor.toDOMNode(editor(), editor());
-					const domSelection = cloneSelection(root.getSelection());
+					const root = SolidEditor.findDocumentOrShadowRoot(editor);
+					const el = SolidEditor.toDOMNode(editor, editor);
+					const domSelection = root.getSelection();
 
 					if (root.activeElement === el) {
 						console.log("Running activeElement === el", root.activeElement, el);
 						console.log(state().latestElement);
 						state().latestElement = root.activeElement;
 						console.log(state().latestElement);
-						IS_FOCUSED.set(editor(), true);
+						IS_FOCUSED.set(editor, true);
 					} else {
-						IS_FOCUSED.delete(editor());
+						IS_FOCUSED.delete(editor);
 					}
 
 					if (!domSelection) {
-						return Transforms.deselect(editor());
+						return Transforms.deselect(editor);
 					}
 
 					const anchorNodeSelectable =
-						SolidEditor.hasEditableTarget(editor(), domSelection.anchorNode) ||
-						SolidEditor.isTargetInsideNonReadonlyVoid(editor(), domSelection.anchorNode);
+						SolidEditor.hasEditableTarget(editor, domSelection.anchorNode) ||
+						SolidEditor.isTargetInsideNonReadonlyVoid(editor, domSelection.anchorNode);
 
 					const focusNodeSelectable =
-						SolidEditor.hasEditableTarget(editor(), domSelection.focusNode) ||
-						SolidEditor.isTargetInsideNonReadonlyVoid(editor(), domSelection.focusNode);
+						SolidEditor.hasEditableTarget(editor, domSelection.focusNode) ||
+						SolidEditor.isTargetInsideNonReadonlyVoid(editor, domSelection.focusNode);
 
 					if (anchorNodeSelectable && focusNodeSelectable) {
-						const range = SolidEditor.toSlateRange(editor(), domSelection, {
+						const range = SolidEditor.toSlateRange(editor, domSelection, {
 							exactMatch: false,
 							suppressThrow: true,
 						});
 
 						if (range) {
 							if (
-								!SolidEditor.isComposing(editor()) &&
+								!SolidEditor.isComposing(editor) &&
 								!androidInputManager?.hasPendingChanges() &&
 								!androidInputManager?.isFlushing()
 							) {
 								console.log("Selecting a point now", range, domSelection, root);
-								Transforms.select(editor(), range);
+								Transforms.select(editor, range);
 							} else {
 								androidInputManager?.handleUserSelect(range);
 							}
 						}
 					}
 
-					// Deselect the editor() if the dom selection is not selectable in readonly mode
+					// Deselect the editor if the dom selection is not selectable in readonly mode
 					if (merged.readOnly && (!anchorNodeSelectable || !focusNodeSelectable)) {
 						console.log("Ran deselector");
-						Transforms.deselect(editor());
+						Transforms.deselect(editor);
 					}
 				}
-			}, 100),
-		[editor(), merged.readOnly, state()]
+			}, 200)
+		)
 	);
 
-	const scheduleOnDOMSelectionChange = createMemo(() => debounce(onDOMSelectionChange(), 0), [onDOMSelectionChange]);
+	const scheduleOnDOMSelectionChange = createMemo(
+		on([onDOMSelectionChange], () => debounce(onDOMSelectionChange(), 0))
+	);
 
 	androidInputManagerRef = useAndroidInputManager({
 		node: ref,
@@ -303,21 +308,21 @@ export const Editable = (props: EditableProps) => {
 		// Update element-related weak maps with the DOM element ref.
 		let window;
 		if (ref && (window = getDefaultView(ref))) {
-			EDITOR_TO_WINDOW.set(editor(), window);
-			EDITOR_TO_ELEMENT.set(editor(), ref);
-			NODE_TO_ELEMENT.set(editor(), ref);
-			ELEMENT_TO_NODE.set(ref, editor());
+			EDITOR_TO_WINDOW.set(editor, window);
+			EDITOR_TO_ELEMENT.set(editor, ref);
+			NODE_TO_ELEMENT.set(editor, ref);
+			ELEMENT_TO_NODE.set(ref, editor);
 		} else {
-			NODE_TO_ELEMENT.delete(editor());
+			NODE_TO_ELEMENT.delete(editor);
 		}
 	});
 
 	createEffect(() => {
 		// Make sure the DOM selection state is in sync.
-		const root = SolidEditor.findDocumentOrShadowRoot(editor());
+		const root = SolidEditor.findDocumentOrShadowRoot(editor);
 		const domSelection = root.getSelection();
 
-		if (!domSelection || !SolidEditor.isFocused(editor()) || androidInputManagerRef?.hasPendingAction()) {
+		if (!domSelection || !SolidEditor.isFocused(editor) || androidInputManagerRef?.hasPendingAction()) {
 			return;
 		}
 
@@ -325,7 +330,7 @@ export const Editable = (props: EditableProps) => {
 			const hasDomSelection = domSelection.type !== "None";
 
 			// If the DOM selection is properly unset, we're done.
-			if (!editor().selection && !hasDomSelection) {
+			if (!editor.selection && !hasDomSelection) {
 				return;
 			}
 
@@ -350,16 +355,16 @@ export const Editable = (props: EditableProps) => {
 				anchorNode = domSelection.anchorNode;
 			}
 
-			// verify that the dom selection is in the editor()
-			const editorElement = EDITOR_TO_ELEMENT.get(editor())!;
+			// verify that the dom selection is in the editor
+			const editorElement = EDITOR_TO_ELEMENT.get(editor)!;
 			let hasDomSelectionInEditor = false;
 			if (editorElement.contains(anchorNode) && editorElement.contains(focusNode)) {
 				hasDomSelectionInEditor = true;
 			}
 
-			// If the DOM selection is in the editor() and the editor() selection is already correct, we're done.
-			if (hasDomSelection && hasDomSelectionInEditor && editor().selection && !forceChange) {
-				const slateRange = SolidEditor.toSlateRange(editor(), domSelection, {
+			// If the DOM selection is in the editor and the editor selection is already correct, we're done.
+			if (hasDomSelection && hasDomSelectionInEditor && editor.selection && !forceChange) {
+				const slateRange = SolidEditor.toSlateRange(editor, domSelection, {
 					exactMatch: true,
 
 					// domSelection is not necessarily a valid Slate range
@@ -367,7 +372,7 @@ export const Editable = (props: EditableProps) => {
 					suppressThrow: true,
 				});
 
-				if (slateRange && Range.equals(slateRange, editor().selection)) {
+				if (slateRange && Range.equals(slateRange, editor.selection)) {
 					if (!state().hasMarkPlaceholder) {
 						return;
 					}
@@ -383,24 +388,27 @@ export const Editable = (props: EditableProps) => {
 			// then its children might just change - DOM responds to it on its own
 			// but Slate's value is not being updated through any operation
 			// and thus it doesn't transform selection on its own
-			if (editor().selection && !SolidEditor.hasRange(editor(), editor().selection)) {
-				editor().selection = SolidEditor.toSlateRange(editor(), domSelection, {
-					exactMatch: false,
-					suppressThrow: true,
-				});
+			if (editor.selection && !SolidEditor.hasRange(editor, editor.selection)) {
+				console.log("Setting Selection");
+				setEditor(
+					"selection",
+					SolidEditor.toSlateRange(editor, domSelection, {
+						exactMatch: false,
+						suppressThrow: true,
+					})
+				);
 				return;
 			}
 
 			// Otherwise the DOM selection is out of sync, so update it.
 			state().isUpdatingSelection = true;
 
-			const newDomRange: DOMRange | null =
-				editor().selection && SolidEditor.toDOMRange(editor(), editor().selection);
+			const newDomRange: DOMRange | null = editor.selection && SolidEditor.toDOMRange(editor, editor.selection);
 
 			if (newDomRange) {
-				if (SolidEditor.isComposing(editor()) && !IS_ANDROID) {
+				if (SolidEditor.isComposing(editor) && !IS_ANDROID) {
 					domSelection.collapseToEnd();
-				} else if (Range.isBackward(editor().selection!)) {
+				} else if (Range.isBackward(editor.selection!)) {
 					domSelection.setBaseAndExtent(
 						newDomRange.endContainer,
 						newDomRange.endOffset,
@@ -415,7 +423,7 @@ export const Editable = (props: EditableProps) => {
 						newDomRange.endOffset
 					);
 				}
-				merged.scrollSelectionIntoView(editor(), newDomRange);
+				merged.scrollSelectionIntoView(editor, newDomRange);
 			} else {
 				domSelection.removeAllRanges();
 			}
@@ -442,7 +450,7 @@ export const Editable = (props: EditableProps) => {
 			if (ensureSelection) {
 				const ensureDomSelection = (forceChange?: boolean) => {
 					try {
-						const el = SolidEditor.toDOMNode(editor(), editor());
+						const el = SolidEditor.toDOMNode(editor, editor);
 						console.log("Focusing el");
 						el.focus();
 
@@ -481,11 +489,11 @@ export const Editable = (props: EditableProps) => {
 	// to the real event sadly. (2019/11/01)
 	// https://github.com/facebook/react/issues/11211
 	const onDOMBeforeInput = (event: InputEvent) => {
-		onUserInput();
+		userInputData().onUserInput();
 
 		if (
 			!merged.readOnly &&
-			SolidEditor.hasEditableTarget(editor(), event.target) &&
+			SolidEditor.hasEditableTarget(editor, event.target) &&
 			!isDOMEventHandled(event, merged.propsOnDOMBeforeInput)
 		) {
 			// COMPAT: BeforeInput events aren't cancelable on android, so we have to handle them differently using the android input manager.
@@ -507,15 +515,15 @@ export const Editable = (props: EditableProps) => {
 
 			// COMPAT: use composition change events as a hint to where we should insert
 			// composition text if we aren't composing to work around https://github.com/ianstormtaylor/slate/issues/5038
-			if (isCompositionChange && SolidEditor.isComposing(editor())) {
+			if (isCompositionChange && SolidEditor.isComposing(editor)) {
 				return;
 			}
 
 			let native = false;
 			if (
 				type === "insertText" &&
-				editor().selection &&
-				Range.isCollapsed(editor().selection) &&
+				editor.selection &&
+				Range.isCollapsed(editor.selection) &&
 				// Only use native character insertion for single characters a-z or space for now.
 				// Long-press events (hold a + press 4 = ä) to choose a special character otherwise
 				// causes duplicate inserts.
@@ -525,25 +533,25 @@ export const Editable = (props: EditableProps) => {
 				// Chrome has issues correctly editing the start of nodes: https://bugs.chromium.org/p/chromium/issues/detail?id=1249405
 				// When there is an inline element, e.g. a link, and you select
 				// right after it (the start of the next node).
-				editor().selection.anchor.offset !== 0
+				editor.selection.anchor.offset !== 0
 			) {
 				native = true;
 
 				// Skip native if there are marks, as
 				// `insertText` will insert a node, not just text.
-				if (editor().marks) {
+				if (editor.marks) {
 					native = false;
 				}
 
 				// Chrome also has issues correctly editing the end of anchor elements: https://bugs.chromium.org/p/chromium/issues/detail?id=1259100
 				// Therefore we don't allow native events to insert text at the end of anchor nodes.
 
-				const [node, offset] = SolidEditor.toDOMPoint(editor(), editor().selection.anchor);
+				const [node, offset] = SolidEditor.toDOMPoint(editor, editor.selection.anchor);
 				const anchorNode = node.parentElement?.closest("a");
 
-				const window = SolidEditor.getWindow(editor());
+				const window = SolidEditor.getWindow(editor);
 
-				if (native && anchorNode && SolidEditor.hasDOMNode(editor(), anchorNode)) {
+				if (native && anchorNode && SolidEditor.hasDOMNode(editor, anchorNode)) {
 					// Find the last text node inside the anchor.
 					const lastText = window?.document
 						.createTreeWalker(anchorNode, NodeFilter.SHOW_TEXT)
@@ -561,9 +569,9 @@ export const Editable = (props: EditableProps) => {
 					node.parentElement &&
 					window?.getComputedStyle(node.parentElement)?.whiteSpace === "pre"
 				) {
-					const block = Editor.above(editor(), {
-						at: editor().selection.anchor.path,
-						match: (n) => Element.isElement(n) && Editor.isBlock(editor(), n),
+					const block = Editor.above(editor, {
+						at: editor.selection.anchor.path,
+						match: (n) => Element.isElement(n) && Editor.isBlock(editor, n),
 					});
 
 					if (block && Node.string(block[0]).includes("\t")) {
@@ -579,22 +587,22 @@ export const Editable = (props: EditableProps) => {
 				const [targetRange] = (event as any).getTargetRanges();
 
 				if (targetRange) {
-					const range = SolidEditor.toSlateRange(editor(), targetRange, {
+					const range = SolidEditor.toSlateRange(editor, targetRange, {
 						exactMatch: false,
 						suppressThrow: false,
 					});
 
-					if (!editor().selection || !Range.equals(editor().selection, range)) {
+					if (!editor.selection || !Range.equals(editor.selection, range)) {
 						native = false;
 
 						const selectionRef =
-							!isCompositionChange && editor().selection && Editor.rangeRef(editor(), editor().selection);
+							!isCompositionChange && editor.selection && Editor.rangeRef(editor, editor.selection);
 
 						console.log("manual-3");
-						Transforms.select(editor(), range);
+						Transforms.select(editor, range);
 
 						if (selectionRef) {
-							EDITOR_TO_USER_SELECTION.set(editor(), selectionRef);
+							EDITOR_TO_USER_SELECTION.set(editor, selectionRef);
 						}
 					}
 				}
@@ -612,9 +620,9 @@ export const Editable = (props: EditableProps) => {
 
 			// COMPAT: If the selection is expanded, even if the command seems like
 			// a delete forward/backward command it should delete the selection.
-			if (editor().selection && Range.isExpanded(editor().selection) && type.startsWith("delete")) {
+			if (editor.selection && Range.isExpanded(editor.selection) && type.startsWith("delete")) {
 				const direction = type.endsWith("Backward") ? "backward" : "forward";
-				Editor.deleteFragment(editor(), { direction });
+				Editor.deleteFragment(editor, { direction });
 				return;
 			}
 
@@ -622,63 +630,63 @@ export const Editable = (props: EditableProps) => {
 				case "deleteByComposition":
 				case "deleteByCut":
 				case "deleteByDrag": {
-					Editor.deleteFragment(editor());
+					Editor.deleteFragment(editor);
 					break;
 				}
 
 				case "deleteContent":
 				case "deleteContentForward": {
-					Editor.deleteForward(editor());
+					Editor.deleteForward(editor);
 					break;
 				}
 
 				case "deleteContentBackward": {
-					Editor.deleteBackward(editor());
+					Editor.deleteBackward(editor);
 					break;
 				}
 
 				case "deleteEntireSoftLine": {
-					Editor.deleteBackward(editor(), { unit: "line" });
-					Editor.deleteForward(editor(), { unit: "line" });
+					Editor.deleteBackward(editor, { unit: "line" });
+					Editor.deleteForward(editor, { unit: "line" });
 					break;
 				}
 
 				case "deleteHardLineBackward": {
-					Editor.deleteBackward(editor(), { unit: "block" });
+					Editor.deleteBackward(editor, { unit: "block" });
 					break;
 				}
 
 				case "deleteSoftLineBackward": {
-					Editor.deleteBackward(editor(), { unit: "line" });
+					Editor.deleteBackward(editor, { unit: "line" });
 					break;
 				}
 
 				case "deleteHardLineForward": {
-					Editor.deleteForward(editor(), { unit: "block" });
+					Editor.deleteForward(editor, { unit: "block" });
 					break;
 				}
 
 				case "deleteSoftLineForward": {
-					Editor.deleteForward(editor(), { unit: "line" });
+					Editor.deleteForward(editor, { unit: "line" });
 					break;
 				}
 
 				case "deleteWordBackward": {
-					Editor.deleteBackward(editor(), { unit: "word" });
+					Editor.deleteBackward(editor, { unit: "word" });
 					break;
 				}
 
 				case "deleteWordForward": {
-					Editor.deleteForward(editor(), { unit: "word" });
+					Editor.deleteForward(editor, { unit: "word" });
 					break;
 				}
 
 				case "insertLineBreak":
-					Editor.insertSoftBreak(editor());
+					Editor.insertSoftBreak(editor);
 					break;
 
 				case "insertParagraph": {
-					Editor.insertBreak(editor());
+					Editor.insertBreak(editor);
 					break;
 				}
 
@@ -694,9 +702,9 @@ export const Editable = (props: EditableProps) => {
 						// then we will abort because we're still composing and the selection
 						// won't be updated properly.
 						// https://www.w3.org/TR/input-events-2/
-						if (SolidEditor.isComposing(editor())) {
+						if (SolidEditor.isComposing(editor)) {
 							setIsComposing(false);
-							IS_COMPOSING.set(editor(), false);
+							IS_COMPOSING.set(editor, false);
 						}
 					}
 
@@ -705,16 +713,16 @@ export const Editable = (props: EditableProps) => {
 					// like cypress where cy.window does not work realibly
 					console.log("got here in inserttext: ", data, typeof data);
 					if (data?.constructor.name === "DataTransfer") {
-						SolidEditor.insertData(editor(), data);
+						SolidEditor.insertData(editor, data);
 					} else if (typeof data === "string") {
 						// Only insertText operations use the native functionality, for now.
 						// Potentially expand to single character deletes, as well.
 						if (native) {
 							console.log("Should do this");
-							setDeferredOperations((prev) => [...prev, () => Editor.insertText(editor(), data)]);
+							setDeferredOperations((prev) => [...prev, () => Editor.insertText(editor, data)]);
 						} else {
-							console.log("Just insert text", editor(), data);
-							Editor.insertText(editor(), data);
+							console.log("Just insert text", editor, data);
+							Editor.insertText(editor, data);
 						}
 					}
 
@@ -723,12 +731,12 @@ export const Editable = (props: EditableProps) => {
 			}
 
 			// Restore the actual user section if nothing manually set it.
-			const toRestore = EDITOR_TO_USER_SELECTION.get(editor())?.unref();
-			EDITOR_TO_USER_SELECTION.delete(editor());
+			const toRestore = EDITOR_TO_USER_SELECTION.get(editor)?.unref();
+			EDITOR_TO_USER_SELECTION.delete(editor);
 
-			if (toRestore && (!editor().selection || !Range.equals(editor().selection, toRestore))) {
+			if (toRestore && (!editor.selection || !Range.equals(editor.selection, toRestore))) {
 				console.log("Selecting Transform toRestore");
-				Transforms.select(editor(), toRestore);
+				Transforms.select(editor, toRestore);
 			}
 		}
 	};
@@ -739,11 +747,11 @@ export const Editable = (props: EditableProps) => {
 			onDOMSelectionChange().cancel();
 			scheduleOnDOMSelectionChange().cancel();
 
-			EDITOR_TO_ELEMENT.delete(editor());
-			NODE_TO_ELEMENT.delete(editor());
+			EDITOR_TO_ELEMENT.delete(editor);
+			NODE_TO_ELEMENT.delete(editor);
 
 			if (ref && HAS_BEFORE_INPUT_SUPPORT) {
-				// @ts-expect-error The `beforeinput` event isn't recognized.
+				// ts-expect-error The `beforeinput` event isn't recognized.
 				ref.removeEventListener("beforeinput", onDOMBeforeInput);
 			}
 		} else {
@@ -752,7 +760,7 @@ export const Editable = (props: EditableProps) => {
 			// real `beforeinput` events sadly... (2019/11/04)
 			// https://github.com/facebook/react/issues/11211
 			if (HAS_BEFORE_INPUT_SUPPORT) {
-				// @ts-expect-error The `beforeinput` event isn't recognized.
+				// ts-expect-error The `beforeinput` event isn't recognized.
 				node.addEventListener("beforeinput", onDOMBeforeInput);
 			}
 		}
@@ -763,30 +771,29 @@ export const Editable = (props: EditableProps) => {
 	// // Attach a native DOM event handler for `selectionchange`, because React's
 	// // built-in `onSelect` handler doesn't fire for all selection changes. It's a
 	// // leaky polyfill that only fires on keypresses or clicks. Instead, we want to
-	// // fire for any change to the selection inside the editor(). (2019/11/04)
+	// // fire for any change to the selection inside the editor. (2019/11/04)
 	// // https://github.com/facebook/react/issues/5785
 
 	// // Beware effect, renderEffect, onMount
 	onMount(() => {
-		const window = SolidEditor.getWindow(editor());
+		const window = SolidEditor.getWindow(editor);
 
 		window.document.addEventListener("selectionchange", () => {
 			console.log("Selection called");
 			return scheduleOnDOMSelectionChange()();
 		});
+		// onCleanup(() => {
+		// 	window.document.removeEventListener("selectionchange", scheduleOnDOMSelectionChange);
+		// });
 	});
 
-	onCleanup(() => {
-		window.document.removeEventListener("selectionchange", scheduleOnDOMSelectionChange);
-	});
-
-	const decorations = () => merged.decorate([editor(), []]);
+	const decorations = () => merged.decorate([editor, []]);
 
 	const showPlaceholder = () =>
 		merged.placeholder &&
-		editor().children.length === 1 &&
-		Array.from(Node.texts(editor())).length === 1 &&
-		Node.string(editor()) === "" &&
+		editor.children.length === 1 &&
+		Array.from(Node.texts(editor)).length === 1 &&
+		Node.string(editor) === "" &&
 		!isComposing;
 
 	const placeHolderResizeHandler = (placeholderEl: HTMLElement | null) => {
@@ -799,7 +806,7 @@ export const Editable = (props: EditableProps) => {
 
 	createRenderEffect(() => {
 		if (showPlaceholder()) {
-			const start = Editor.start(editor(), []);
+			const start = Editor.start(editor, []);
 			decorations().push({
 				[PLACEHOLDER_SYMBOL]: true,
 				placeholder: merged.placeholder,
@@ -812,13 +819,13 @@ export const Editable = (props: EditableProps) => {
 
 	createRenderEffect(() => {
 		state().hasMarkPlaceholder = false;
-		if (editor().selection && Range.isCollapsed(editor().selection) && editor().marks) {
-			const leaf = Node.leaf(editor(), editor().selection.anchor.path);
+		if (editor.selection && Range.isCollapsed(editor.selection) && editor.marks) {
+			const leaf = Node.leaf(editor, editor.selection.anchor.path);
 			const { text, ...rest } = leaf;
 
 			// While marks isn't a 'complete' text, we can still use loose Text.equals
 			// here which only compares marks anyway.
-			if (!Text.equals(leaf, editor().marks as Text, { loose: true })) {
+			if (!Text.equals(leaf, editor.marks as Text, { loose: true })) {
 				state().hasMarkPlaceholder = true;
 
 				const unset = Object.fromEntries(Object.keys(rest).map((mark) => [mark, null]));
@@ -826,31 +833,34 @@ export const Editable = (props: EditableProps) => {
 				decorations().push({
 					[MARK_PLACEHOLDER_SYMBOL]: true,
 					...unset,
-					...editor().marks,
+					...editor.marks,
 
-					anchor: editor().selection.anchor,
-					focus: editor().selection.anchor,
+					anchor: editor.selection.anchor,
+					focus: editor.selection.anchor,
 				});
 			}
 		}
 	});
 
+	createEffect(() => console.log("Selection effect", editor.selection));
+
 	// Update EDITOR_TO_MARK_PLACEHOLDER_MARKS in setTimeout useEffect to ensure we don't set it
 	// before we receive the composition end event.
 	createEffect(() => {
 		setTimeout(() => {
-			if (editor().selection) {
-				const text = Node.leaf(editor(), editor().selection.anchor.path);
+			console.log("Running Settimeout effect");
+			if (editor.selection) {
+				const text = Node.leaf(editor, editor.selection.anchor.path);
 
 				// While marks isn't a 'complete' text, we can still use loose Text.equals
 				// here which only compares marks anyway.
-				if (editor().marks && !Text.equals(text, editor().marks as Text, { loose: true })) {
-					EDITOR_TO_PENDING_INSERTION_MARKS.set(editor(), editor().marks);
+				if (editor.marks && !Text.equals(text, editor.marks as Text, { loose: true })) {
+					EDITOR_TO_PENDING_INSERTION_MARKS.set(editor, editor.marks);
 					return;
 				}
 			}
 
-			EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor());
+			EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor);
 		});
 	});
 
@@ -860,7 +870,7 @@ export const Editable = (props: EditableProps) => {
 	return (
 		<ReadOnlyContext.Provider value={getReadOnly}>
 			<DecorateContext.Provider value={getDecorate}>
-				<RestoreDOM node={ref} receivedUserInput={receivedUserInput}>
+				<RestoreDOM node={ref} receivedUserInput={userInputData().receivedUserInput()}>
 					<Dynamic
 						component={merged.Component}
 						role={merged.readOnly ? undefined : "textbox"}
@@ -908,12 +918,12 @@ export const Editable = (props: EditableProps) => {
 								!HAS_BEFORE_INPUT_SUPPORT &&
 								!merged.readOnly &&
 								!isEventHandled(event, attributes.onBeforeInput) &&
-								SolidEditor.hasSelectableTarget(editor(), event.target)
+								SolidEditor.hasSelectableTarget(editor, event.target)
 							) {
 								event.preventDefault();
-								if (!SolidEditor.isComposing(editor())) {
+								if (!SolidEditor.isComposing(editor)) {
 									const text = (event as any).data as string;
-									Editor.insertText(editor(), text);
+									Editor.insertText(editor, text);
 								}
 							}
 						}}
@@ -941,7 +951,7 @@ export const Editable = (props: EditableProps) => {
 							if (
 								merged.readOnly ||
 								state().isUpdatingSelection ||
-								!SolidEditor.hasSelectableTarget(editor(), event.target) ||
+								!SolidEditor.hasSelectableTarget(editor, event.target) ||
 								isEventHandled(event, attributes.onBlur)
 							) {
 								return;
@@ -950,24 +960,24 @@ export const Editable = (props: EditableProps) => {
 							// COMPAT: If the current `activeElement` is still the previous
 							// one, this is due to the window being blurred when the tab
 							// itself becomes unfocused, so we want to abort early to allow to
-							// editor() to stay focused when the tab becomes focused again.
-							const root = SolidEditor.findDocumentOrShadowRoot(editor());
+							// editor to stay focused when the tab becomes focused again.
+							const root = SolidEditor.findDocumentOrShadowRoot(editor);
 							if (state().latestElement === root.activeElement) {
 								return;
 							}
 
 							const { relatedTarget } = event;
-							const el = SolidEditor.toDOMNode(editor(), editor());
+							const el = SolidEditor.toDOMNode(editor, editor);
 
 							// COMPAT: The event should be ignored if the focus is returning
-							// to the editor() from an embedded editable element (eg. an <input>
+							// to the editor from an embedded editable element (eg. an <input>
 							// element inside a void node).
 							if (relatedTarget === el) {
 								return;
 							}
 
 							// COMPAT: The event should be ignored if the focus is moving from
-							// the editor() to inside a void node's spacer element.
+							// the editor to inside a void node's spacer element.
 							if (isDOMElement(relatedTarget) && relatedTarget.hasAttribute("data-slate-spacer")) {
 								return;
 							}
@@ -978,11 +988,11 @@ export const Editable = (props: EditableProps) => {
 							if (
 								relatedTarget != null &&
 								isDOMNode(relatedTarget) &&
-								SolidEditor.hasDOMNode(editor(), relatedTarget)
+								SolidEditor.hasDOMNode(editor, relatedTarget)
 							) {
-								const node = SolidEditor.toSlateNode(editor(), relatedTarget);
+								const node = SolidEditor.toSlateNode(editor, relatedTarget);
 
-								if (Element.isElement(node) && !editor().isVoid(node)) {
+								if (Element.isElement(node) && !editor.isVoid(node)) {
 									return;
 								}
 							}
@@ -995,40 +1005,42 @@ export const Editable = (props: EditableProps) => {
 								domSelection?.removeAllRanges();
 							}
 
-							IS_FOCUSED.delete(editor());
+							IS_FOCUSED.delete(editor);
 						}}
 						onClick={(event: MouseEvent) => {
+							return "premature";
 							if (
-								SolidEditor.hasTarget(editor(), event.target) &&
+								SolidEditor.hasTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onClick) &&
 								isDOMNode(event.target)
 							) {
-								const node = SolidEditor.toSlateNode(editor(), event.target);
-								const path = SolidEditor.findPath(editor(), node);
-								console.log("Clicked textbox at", event.target, path, node);
+								const node = SolidEditor.toSlateNode(editor, event.target);
+								const path = SolidEditor.findPath(editor, node);
+								console.log("Clicked textbox at", event.target, path, node, editor);
 
 								// At this time, the Slate document may be arbitrarily different,
 								// because onClick handlers can change the document before we get here.
 								// Therefore we must check that this path actually exists,
 								// and that it still refers to the same node.
-								if (!Editor.hasPath(editor(), path) || Node.get(editor(), path) !== node) {
+								console.log("Still returns something: ", Node.get(editor, path));
+								if (!Editor.hasPath(editor, path) || Node.get(editor, path) !== node) {
 									return;
 								}
 
 								if (event.detail === TRIPLE_CLICK && path.length >= 1) {
 									let blockPath = path;
-									if (!(Element.isElement(node) && Editor.isBlock(editor(), node))) {
-										const block = Editor.above(editor(), {
-											match: (n) => Element.isElement(n) && Editor.isBlock(editor(), n),
+									if (!(Element.isElement(node) && Editor.isBlock(editor, node))) {
+										const block = Editor.above(editor, {
+											match: (n) => Element.isElement(n) && Editor.isBlock(editor, n),
 											at: path,
 										});
 
 										blockPath = block?.[1] ?? path.slice(0, 1);
 									}
 
-									const range = Editor.range(editor(), blockPath);
+									const range = Editor.range(editor, blockPath);
 									console.log("manual-1");
-									Transforms.select(editor(), range);
+									Transforms.select(editor, range);
 									return;
 								}
 
@@ -1036,24 +1048,24 @@ export const Editable = (props: EditableProps) => {
 									return;
 								}
 
-								const start = Editor.start(editor(), path);
-								const end = Editor.end(editor(), path);
-								const startVoid = Editor.void(editor(), { at: start });
-								const endVoid = Editor.void(editor(), { at: end });
+								const start = Editor.start(editor, path);
+								const end = Editor.end(editor, path);
+								const startVoid = Editor.void(editor, { at: start });
+								const endVoid = Editor.void(editor, { at: end });
 
 								if (startVoid && endVoid && Path.equals(startVoid[1], endVoid[1])) {
-									const range = Editor.range(editor(), start);
+									const range = Editor.range(editor, start);
 									console.log("manual-2");
-									Transforms.select(editor(), range);
+									Transforms.select(editor, range);
 								}
 							}
 						}}
 						onCompositionEnd={(event: CompositionEvent) => {
-							if (SolidEditor.hasSelectableTarget(editor(), event.target)) {
-								if (SolidEditor.isComposing(editor())) {
+							if (SolidEditor.hasSelectableTarget(editor, event.target)) {
+								if (SolidEditor.isComposing(editor)) {
 									Promise.resolve().then(() => {
 										setIsComposing(false);
-										IS_COMPOSING.set(editor(), false);
+										IS_COMPOSING.set(editor, false);
 									});
 								}
 
@@ -1075,39 +1087,39 @@ export const Editable = (props: EditableProps) => {
 									!IS_UC_MOBILE &&
 									event.data
 								) {
-									const placeholderMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(editor());
-									EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor());
+									const placeholderMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(editor);
+									EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor);
 
 									// Ensure we insert text with the marks the user was actually seeing
 									if (placeholderMarks !== undefined) {
-										EDITOR_TO_USER_MARKS.set(editor(), editor().marks);
-										editor().marks = placeholderMarks;
+										EDITOR_TO_USER_MARKS.set(editor, editor.marks);
+										setEditor("marks", placeholderMarks);
 									}
 
-									Editor.insertText(editor(), event.data);
+									Editor.insertText(editor, event.data);
 
-									const userMarks = EDITOR_TO_USER_MARKS.get(editor());
-									EDITOR_TO_USER_MARKS.delete(editor());
+									const userMarks = EDITOR_TO_USER_MARKS.get(editor);
+									EDITOR_TO_USER_MARKS.delete(editor);
 									if (userMarks !== undefined) {
-										editor().marks = userMarks;
+										setEditor("marks", userMarks);
 									}
 								}
 							}
 						}}
 						onCompositionUpdate={(event: CompositionEvent) => {
 							if (
-								SolidEditor.hasSelectableTarget(editor(), event.target) &&
+								SolidEditor.hasSelectableTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onCompositionUpdate)
 							) {
-								if (!SolidEditor.isComposing(editor())) {
+								if (!SolidEditor.isComposing(editor)) {
 									setIsComposing(true);
-									IS_COMPOSING.set(editor(), true);
+									IS_COMPOSING.set(editor, true);
 								}
 							}
 						}}
 						onCompositionStart={(event: CompositionEvent) => {
 							console.log("Composed", event);
-							if (SolidEditor.hasSelectableTarget(editor(), event.target)) {
+							if (SolidEditor.hasSelectableTarget(editor, event.target)) {
 								androidInputManagerRef?.handleCompositionStart(event);
 
 								if (isEventHandled(event, attributes.onCompositionStart) || IS_ANDROID) {
@@ -1116,21 +1128,21 @@ export const Editable = (props: EditableProps) => {
 
 								setIsComposing(true);
 
-								if (editor().selection) {
-									if (Range.isExpanded(editor().selection)) {
-										Editor.deleteFragment(editor());
+								if (editor.selection) {
+									if (Range.isExpanded(editor.selection)) {
+										Editor.deleteFragment(editor);
 										return;
 									}
-									const inline = Editor.above(editor(), {
-										match: (n) => Element.isElement(n) && Editor.isInline(editor(), n),
+									const inline = Editor.above(editor, {
+										match: (n) => Element.isElement(n) && Editor.isInline(editor, n),
 										mode: "highest",
 									});
 									if (inline) {
 										const [, inlinePath] = inline;
-										if (Editor.isEnd(editor(), editor().selection.anchor, inlinePath)) {
-											const point = Editor.after(editor(), inlinePath)!;
+										if (Editor.isEnd(editor, editor.selection.anchor, inlinePath)) {
+											const point = Editor.after(editor, inlinePath)!;
 											console.log("Setting Selection", point);
-											Transforms.setSelection(editor(), {
+											Transforms.setSelection(editor, {
 												anchor: point,
 												focus: point,
 											});
@@ -1141,31 +1153,31 @@ export const Editable = (props: EditableProps) => {
 						}}
 						onCopy={(event: ClipboardEvent) => {
 							if (
-								SolidEditor.hasSelectableTarget(editor(), event.target) &&
+								SolidEditor.hasSelectableTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onCopy) &&
 								!isDOMEventTargetInput(event)
 							) {
 								event.preventDefault();
-								SolidEditor.setFragmentData(editor(), event.clipboardData, "copy");
+								SolidEditor.setFragmentData(editor, event.clipboardData, "copy");
 							}
 						}}
 						onCut={(event: ClipboardEvent) => {
 							if (
 								!merged.readOnly &&
-								SolidEditor.hasSelectableTarget(editor(), event.target) &&
+								SolidEditor.hasSelectableTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onCut) &&
 								!isDOMEventTargetInput(event)
 							) {
 								event.preventDefault();
-								SolidEditor.setFragmentData(editor(), event.clipboardData, "cut");
+								SolidEditor.setFragmentData(editor, event.clipboardData, "cut");
 
-								if (editor().selection) {
-									if (Range.isExpanded(editor().selection)) {
-										Editor.deleteFragment(editor());
+								if (editor.selection) {
+									if (Range.isExpanded(editor.selection)) {
+										Editor.deleteFragment(editor);
 									} else {
-										const node = Node.parent(editor(), editor().selection.anchor.path);
-										if (Editor.isVoid(editor(), node)) {
-											Transforms.delete(editor());
+										const node = Node.parent(editor, editor.selection.anchor.path);
+										if (Editor.isVoid(editor, node)) {
+											Transforms.delete(editor);
 										}
 									}
 								}
@@ -1173,15 +1185,15 @@ export const Editable = (props: EditableProps) => {
 						}}
 						onDragOver={(event: DragEvent) => {
 							if (
-								SolidEditor.hasTarget(editor(), event.target) &&
+								SolidEditor.hasTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onDragOver)
 							) {
 								// Only when the target is void, call `preventDefault` to signal
 								// that drops are allowed. Editable content is droppable by
 								// default, and calling `preventDefault` hides the cursor.
-								const node = SolidEditor.toSlateNode(editor(), event.target);
+								const node = SolidEditor.toSlateNode(editor, event.target);
 
-								if (Element.isElement(node) && Editor.isVoid(editor(), node)) {
+								if (Element.isElement(node) && Editor.isVoid(editor, node)) {
 									event.preventDefault();
 								}
 							}
@@ -1189,62 +1201,62 @@ export const Editable = (props: EditableProps) => {
 						onDragStart={(event: DragEvent) => {
 							if (
 								!merged.readOnly &&
-								SolidEditor.hasTarget(editor(), event.target) &&
+								SolidEditor.hasTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onDragStart)
 							) {
-								const node = SolidEditor.toSlateNode(editor(), event.target);
-								const path = SolidEditor.findPath(editor(), node);
+								const node = SolidEditor.toSlateNode(editor, event.target);
+								const path = SolidEditor.findPath(editor, node);
 								const voidMatch =
-									(Element.isElement(node) && Editor.isVoid(editor(), node)) ||
-									Editor.void(editor(), { at: path, voids: true });
+									(Element.isElement(node) && Editor.isVoid(editor, node)) ||
+									Editor.void(editor, { at: path, voids: true });
 
 								// If starting a drag on a void node, make sure it is selected
 								// so that it shows up in the selection's fragment.
 								if (voidMatch) {
-									const range = Editor.range(editor(), path);
-									Transforms.select(editor(), range);
+									const range = Editor.range(editor, path);
+									Transforms.select(editor, range);
 								}
 
 								state().isDraggingInternally = true;
 
-								SolidEditor.setFragmentData(editor(), event.dataTransfer, "drag");
+								SolidEditor.setFragmentData(editor, event.dataTransfer, "drag");
 							}
 						}}
 						onDrop={(event: DragEvent) => {
 							if (
 								!merged.readOnly &&
-								SolidEditor.hasTarget(editor(), event.target) &&
+								SolidEditor.hasTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onDrop)
 							) {
 								event.preventDefault();
 
 								// Keep a reference to the dragged range before updating selection
-								const draggedRange = editor().selection;
+								const draggedRange = editor.selection;
 
 								// Find the range where the drop happened
-								const range = SolidEditor.findEventRange(editor(), event);
+								const range = SolidEditor.findEventRange(editor, event);
 								const data = event.dataTransfer;
 
-								Transforms.select(editor(), range);
+								Transforms.select(editor, range);
 
 								if (state().isDraggingInternally) {
 									if (
 										draggedRange &&
 										!Range.equals(draggedRange, range) &&
-										!Editor.void(editor(), { at: range, voids: true })
+										!Editor.void(editor, { at: range, voids: true })
 									) {
-										Transforms.delete(editor(), {
+										Transforms.delete(editor, {
 											at: draggedRange,
 										});
 									}
 								}
 
-								SolidEditor.insertData(editor(), data);
+								SolidEditor.insertData(editor, data);
 
-								// When dragging from another source into the editor(), it's possible
-								// that the current editor() does not have focus.
-								if (!SolidEditor.isFocused(editor())) {
-									SolidEditor.focus(editor());
+								// When dragging from another source into the editor, it's possible
+								// that the current editor does not have focus.
+								if (!SolidEditor.isFocused(editor)) {
+									SolidEditor.focus(editor);
 								}
 							}
 
@@ -1255,12 +1267,12 @@ export const Editable = (props: EditableProps) => {
 								!merged.readOnly &&
 								state().isDraggingInternally &&
 								attributes.onDragEnd &&
-								SolidEditor.hasTarget(editor(), event.target)
+								SolidEditor.hasTarget(editor, event.target)
 							) {
 								attributes.onDragEnd(event);
 							}
 
-							// When dropping on a different droppable element than the current editor(),
+							// When dropping on a different droppable element than the current editor,
 							// `onDrop` is not called. So we need to clean up in `onDragEnd` instead.
 							// Note: `onDragEnd` is only called when `onDrop` is not called
 							state().isDraggingInternally = false;
@@ -1269,14 +1281,14 @@ export const Editable = (props: EditableProps) => {
 							if (
 								!merged.readOnly &&
 								!state().isUpdatingSelection &&
-								SolidEditor.hasEditableTarget(editor(), event.target) &&
+								SolidEditor.hasEditableTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onFocus)
 							) {
-								const el = SolidEditor.toDOMNode(editor(), editor());
-								const root = SolidEditor.findDocumentOrShadowRoot(editor());
+								const el = SolidEditor.toDOMNode(editor, editor);
+								const root = SolidEditor.findDocumentOrShadowRoot(editor);
 								state().latestElement = root.activeElement;
 
-								// COMPAT: If the editor() has nested editable elements, the focus
+								// COMPAT: If the editor has nested editable elements, the focus
 								// can go to them. In Firefox, this must be prevented because it
 								// results in issues with keyboard navigation. (2017/03/30)
 								if (IS_FIREFOX && event.target !== el) {
@@ -1284,29 +1296,32 @@ export const Editable = (props: EditableProps) => {
 									return;
 								}
 
-								IS_FOCUSED.set(editor(), true);
+								IS_FOCUSED.set(editor, true);
 							}
 						}}
 						onKeyDown={(event: KeyboardEvent) => {
-							if (!merged.readOnly && SolidEditor.hasEditableTarget(editor(), event.target)) {
+							return "premature";
+							if (!merged.readOnly && SolidEditor.hasEditableTarget(editor, event.target)) {
 								androidInputManagerRef?.handleKeyDown(event);
 
 								// COMPAT: The composition end event isn't fired reliably in all browsers,
 								// so we sometimes might end up stuck in a composition state even though we
 								// aren't composing any more.
-								if (SolidEditor.isComposing(editor()) && event.isComposing === false) {
-									IS_COMPOSING.set(editor(), false);
+								if (SolidEditor.isComposing(editor) && event.isComposing === false) {
+									IS_COMPOSING.set(editor, false);
 									setIsComposing(false);
 								}
 
-								if (isEventHandled(event, attributes.onKeyDown) || SolidEditor.isComposing(editor())) {
+								if (isEventHandled(event, attributes.onKeyDown) || SolidEditor.isComposing(editor)) {
 									return;
 								}
+								console.log(editor);
+								console.log(editor.children);
+								console.log("This is successful: ", editor.children[0]);
 
 								const element =
-									editor().children[
-										editor().selection !== null ? editor().selection.focus.path[0] : 0
-									];
+									editor.children[editor.selection !== null ? editor.selection.focus.path[0] : 0];
+								console.log("Still got the element: ", element);
 								const isRTL = getDirection(Node.string(element)) === "rtl";
 
 								// COMPAT: Since we prevent the default behavior on
@@ -1315,7 +1330,7 @@ export const Editable = (props: EditableProps) => {
 								// hotkeys ourselves. (2019/11/06)
 								if (Hotkeys.isRedo(event)) {
 									event.preventDefault();
-									const maybeHistoryEditor: any = editor();
+									const maybeHistoryEditor: any = editor;
 
 									if (typeof maybeHistoryEditor.redo === "function") {
 										maybeHistoryEditor.redo();
@@ -1326,7 +1341,7 @@ export const Editable = (props: EditableProps) => {
 
 								if (Hotkeys.isUndo(event)) {
 									event.preventDefault();
-									const maybeHistoryEditor: any = editor();
+									const maybeHistoryEditor: any = editor;
 
 									if (typeof maybeHistoryEditor.undo === "function") {
 										maybeHistoryEditor.undo();
@@ -1341,19 +1356,19 @@ export const Editable = (props: EditableProps) => {
 								// (2017/10/17)
 								if (Hotkeys.isMoveLineBackward(event)) {
 									event.preventDefault();
-									Transforms.move(editor(), { unit: "line", reverse: true });
+									Transforms.move(editor, { unit: "line", reverse: true });
 									return;
 								}
 
 								if (Hotkeys.isMoveLineForward(event)) {
 									event.preventDefault();
-									Transforms.move(editor(), { unit: "line" });
+									Transforms.move(editor, { unit: "line" });
 									return;
 								}
 
 								if (Hotkeys.isExtendLineBackward(event)) {
 									event.preventDefault();
-									Transforms.move(editor(), {
+									Transforms.move(editor, {
 										unit: "line",
 										edge: "focus",
 										reverse: true,
@@ -1363,7 +1378,7 @@ export const Editable = (props: EditableProps) => {
 
 								if (Hotkeys.isExtendLineForward(event)) {
 									event.preventDefault();
-									Transforms.move(editor(), { unit: "line", edge: "focus" });
+									Transforms.move(editor, { unit: "line", edge: "focus" });
 									return;
 								}
 
@@ -1375,10 +1390,10 @@ export const Editable = (props: EditableProps) => {
 								if (Hotkeys.isMoveBackward(event)) {
 									event.preventDefault();
 
-									if (editor().selection && Range.isCollapsed(editor().selection)) {
-										Transforms.move(editor(), { reverse: !isRTL });
+									if (editor.selection && Range.isCollapsed(editor.selection)) {
+										Transforms.move(editor, { reverse: !isRTL });
 									} else {
-										Transforms.collapse(editor(), {
+										Transforms.collapse(editor, {
 											edge: isRTL ? "end" : "start",
 										});
 									}
@@ -1389,10 +1404,10 @@ export const Editable = (props: EditableProps) => {
 								if (Hotkeys.isMoveForward(event)) {
 									event.preventDefault();
 
-									if (editor().selection && Range.isCollapsed(editor().selection)) {
-										Transforms.move(editor(), { reverse: isRTL });
+									if (editor.selection && Range.isCollapsed(editor.selection)) {
+										Transforms.move(editor, { reverse: isRTL });
 									} else {
-										Transforms.collapse(editor(), {
+										Transforms.collapse(editor, {
 											edge: isRTL ? "start" : "end",
 										});
 									}
@@ -1403,22 +1418,22 @@ export const Editable = (props: EditableProps) => {
 								if (Hotkeys.isMoveWordBackward(event)) {
 									event.preventDefault();
 
-									if (editor().selection && Range.isExpanded(editor().selection)) {
-										Transforms.collapse(editor(), { edge: "focus" });
+									if (editor.selection && Range.isExpanded(editor.selection)) {
+										Transforms.collapse(editor, { edge: "focus" });
 									}
 
-									Transforms.move(editor(), { unit: "word", reverse: !isRTL });
+									Transforms.move(editor, { unit: "word", reverse: !isRTL });
 									return;
 								}
 
 								if (Hotkeys.isMoveWordForward(event)) {
 									event.preventDefault();
 
-									if (editor().selection && Range.isExpanded(editor().selection)) {
-										Transforms.collapse(editor(), { edge: "focus" });
+									if (editor.selection && Range.isExpanded(editor.selection)) {
+										Transforms.collapse(editor, { edge: "focus" });
 									}
 
-									Transforms.move(editor(), { unit: "word", reverse: isRTL });
+									Transforms.move(editor, { unit: "word", reverse: isRTL });
 									return;
 								}
 
@@ -1439,23 +1454,23 @@ export const Editable = (props: EditableProps) => {
 
 									if (Hotkeys.isSoftBreak(event)) {
 										event.preventDefault();
-										Editor.insertSoftBreak(editor());
+										Editor.insertSoftBreak(editor);
 										return;
 									}
 
 									if (Hotkeys.isSplitBlock(event)) {
 										event.preventDefault();
-										Editor.insertBreak(editor());
+										Editor.insertBreak(editor);
 										return;
 									}
 
 									if (Hotkeys.isDeleteBackward(event)) {
 										event.preventDefault();
 
-										if (editor().selection && Range.isExpanded(editor().selection)) {
-											Editor.deleteFragment(editor(), { direction: "backward" });
+										if (editor.selection && Range.isExpanded(editor.selection)) {
+											Editor.deleteFragment(editor, { direction: "backward" });
 										} else {
-											Editor.deleteBackward(editor());
+											Editor.deleteBackward(editor);
 										}
 
 										return;
@@ -1464,10 +1479,10 @@ export const Editable = (props: EditableProps) => {
 									if (Hotkeys.isDeleteForward(event)) {
 										event.preventDefault();
 
-										if (editor().selection && Range.isExpanded(editor().selection)) {
-											Editor.deleteFragment(editor(), { direction: "forward" });
+										if (editor.selection && Range.isExpanded(editor.selection)) {
+											Editor.deleteFragment(editor, { direction: "forward" });
 										} else {
-											Editor.deleteForward(editor());
+											Editor.deleteForward(editor);
 										}
 
 										return;
@@ -1476,10 +1491,10 @@ export const Editable = (props: EditableProps) => {
 									if (Hotkeys.isDeleteLineBackward(event)) {
 										event.preventDefault();
 
-										if (editor().selection && Range.isExpanded(editor().selection)) {
-											Editor.deleteFragment(editor(), { direction: "backward" });
+										if (editor.selection && Range.isExpanded(editor.selection)) {
+											Editor.deleteFragment(editor, { direction: "backward" });
 										} else {
-											Editor.deleteBackward(editor(), { unit: "line" });
+											Editor.deleteBackward(editor, { unit: "line" });
 										}
 
 										return;
@@ -1488,10 +1503,10 @@ export const Editable = (props: EditableProps) => {
 									if (Hotkeys.isDeleteLineForward(event)) {
 										event.preventDefault();
 
-										if (editor().selection && Range.isExpanded(editor().selection)) {
-											Editor.deleteFragment(editor(), { direction: "forward" });
+										if (editor.selection && Range.isExpanded(editor.selection)) {
+											Editor.deleteFragment(editor, { direction: "forward" });
 										} else {
-											Editor.deleteForward(editor(), { unit: "line" });
+											Editor.deleteForward(editor, { unit: "line" });
 										}
 
 										return;
@@ -1500,10 +1515,10 @@ export const Editable = (props: EditableProps) => {
 									if (Hotkeys.isDeleteWordBackward(event)) {
 										event.preventDefault();
 
-										if (editor().selection && Range.isExpanded(editor().selection)) {
-											Editor.deleteFragment(editor(), { direction: "backward" });
+										if (editor.selection && Range.isExpanded(editor.selection)) {
+											Editor.deleteFragment(editor, { direction: "backward" });
 										} else {
-											Editor.deleteBackward(editor(), { unit: "word" });
+											Editor.deleteBackward(editor, { unit: "word" });
 										}
 
 										return;
@@ -1512,10 +1527,10 @@ export const Editable = (props: EditableProps) => {
 									if (Hotkeys.isDeleteWordForward(event)) {
 										event.preventDefault();
 
-										if (editor().selection && Range.isExpanded(editor().selection)) {
-											Editor.deleteFragment(editor(), { direction: "forward" });
+										if (editor.selection && Range.isExpanded(editor.selection)) {
+											Editor.deleteFragment(editor, { direction: "forward" });
 										} else {
-											Editor.deleteForward(editor(), { unit: "word" });
+											Editor.deleteForward(editor, { unit: "word" });
 										}
 
 										return;
@@ -1525,20 +1540,20 @@ export const Editable = (props: EditableProps) => {
 										// COMPAT: Chrome and Safari support `beforeinput` event but do not fire
 										// an event when deleting backwards in a selected void inline node
 										if (
-											editor().selection &&
+											editor.selection &&
 											(Hotkeys.isDeleteBackward(event) || Hotkeys.isDeleteForward(event)) &&
-											Range.isCollapsed(editor().selection)
+											Range.isCollapsed(editor.selection)
 										) {
-											const currentNode = Node.parent(editor(), editor().selection.anchor.path);
+											const currentNode = Node.parent(editor, editor.selection.anchor.path);
 
 											if (
 												Element.isElement(currentNode) &&
-												Editor.isVoid(editor(), currentNode) &&
-												(Editor.isInline(editor(), currentNode) ||
-													Editor.isBlock(editor(), currentNode))
+												Editor.isVoid(editor, currentNode) &&
+												(Editor.isInline(editor, currentNode) ||
+													Editor.isBlock(editor, currentNode))
 											) {
 												event.preventDefault();
-												Editor.deleteBackward(editor(), { unit: "block" });
+												Editor.deleteBackward(editor, { unit: "block" });
 
 												return;
 											}
@@ -1550,7 +1565,7 @@ export const Editable = (props: EditableProps) => {
 						onPaste={(event: ClipboardEvent) => {
 							if (
 								!merged.readOnly &&
-								SolidEditor.hasEditableTarget(editor(), event.target) &&
+								SolidEditor.hasEditableTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onPaste)
 							) {
 								// COMPAT: Certain browsers don't support the `beforeinput` event, so we
@@ -1562,26 +1577,26 @@ export const Editable = (props: EditableProps) => {
 								// ClipboardEvent here. (2023/03/15)
 								if (!HAS_BEFORE_INPUT_SUPPORT || isPlainTextOnlyPaste(event) || IS_WEBKIT) {
 									event.preventDefault();
-									SolidEditor.insertData(editor(), event.clipboardData);
+									SolidEditor.insertData(editor, event.clipboardData);
 								}
 							}
 						}}
 					>
 						{/* {useChildren({
 							decorations: decorations(),
-							node: editor(),
+							node: editor,
 							renderElement: merged.renderElement,
 							renderPlaceholder: merged.renderPlaceholder,
 							renderLeaf: merged.renderLeaf,
-							selection: editor().selection,
+							selection: editor.selection,
 						})} */}
 						<Children
 							decorations={decorations()}
-							node={editor()}
+							node={editor}
 							renderElement={merged.renderElement}
 							renderPlaceholder={merged.renderPlaceholder}
 							renderLeaf={merged.renderLeaf}
-							selection={editor().selection}
+							selection={editor.selection}
 						/>
 					</Dynamic>
 				</RestoreDOM>

@@ -336,9 +336,10 @@ export const SolidEditor: SolidEditorInterface = {
 
 		while (true) {
 			const parent = NODE_TO_PARENT.get(child);
-			console.log("Parent: ", parent, child);
+			console.log("FindPath Parent -> Child: ", parent, child);
 
 			if (parent == null) {
+				console.log("parent is null", child);
 				if (Editor.isEditor(child)) {
 					return path;
 				} else {

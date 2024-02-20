@@ -1,8 +1,8 @@
-import { Match, Switch, createMemo, createRenderEffect, createSignal } from "solid-js";
+import { Match, Switch, createEffect, createMemo, createRenderEffect, createSignal } from "solid-js";
 import isHotkey from "is-hotkey";
 import { Editable, withSolid, useSlate, Slate, SolidEditor } from "./package";
-import { Editor, Transforms, createEditor, Descendant, Element as SlateElement } from "slate";
-
+import { Editor, Transforms, createEditor, Descendant, Element as SlateElement, BaseSelection } from "slate";
+import { createStore } from "solid-js/store";
 import { Button, Icon, Toolbar } from "./components";
 
 const HOTKEYS = {
@@ -18,10 +18,45 @@ const TEXT_ALIGN_TYPES = ["left", "center", "right", "justify"];
 const App = () => {
 	const renderElement = (props: any) => <Element {...props} />;
 	const renderLeaf = (props: any) => <Leaf {...props} />;
-	const editor = createMemo(() => withSolid(createEditor()));
+	const staticEditor = createMemo(() => withSolid(createEditor()));
+	const [editor, setEditor] = createStore(staticEditor());
+
+	// console.log("Just created", editor);
+
+	createEffect(() => console.log("Selection changed effect", editor.selection));
+	createEffect(() => console.log("Children Changed effect", editor.children));
+
+	function testFunc() {
+		console.log(editor);
+		// setEditor("selection", {
+		// 	anchor: {
+		// 		path: [3, 0],
+		// 		offset: 24,
+		// 	},
+		// 	focus: {
+		// 		path: [3, 0],
+		// 		offset: 24,
+		// 	},
+		// });
+	}
+
+	function onEditorChange(children: Descendant[]) {
+		setEditor("children", children);
+	}
+
+	function onEditorSelectionChange(selection: BaseSelection) {
+		console.log("New selection", selection);
+		setEditor("selection", selection);
+	}
 
 	return (
-		<Slate editor={editor()} initialValue={initialValue}>
+		<Slate
+			editor={editor}
+			setEditor={setEditor}
+			initialValue={initialValue}
+			onChange={onEditorChange}
+			onSelectionChange={onEditorSelectionChange}
+		>
 			<Toolbar>
 				<MarkButton format="bold" icon="format_bold" />
 				<MarkButton format="italic" icon="format_italic" />
@@ -48,11 +83,12 @@ const App = () => {
 						if (isHotkey(hotkey, event as any)) {
 							event.preventDefault();
 							const mark = HOTKEYS[hotkey];
-							toggleMark(editor(), mark);
+							toggleMark(editor, mark);
 						}
 					}
 				}}
 			/>
+			<button onClick={testFunc}>Test Button</button>
 		</Slate>
 	);
 };
@@ -183,13 +219,13 @@ const Leaf = (props: { attributes: any; children: any; leaf: any }) => {
 };
 
 const BlockButton = (props: { format: any; icon: any }) => {
-	const editor = useSlate();
+	const [editor] = useSlate();
 	return (
 		<Button
-			active={isBlockActive(editor(), props.format, TEXT_ALIGN_TYPES.includes(props.format) ? "align" : "type")}
+			active={isBlockActive(editor, props.format, TEXT_ALIGN_TYPES.includes(props.format) ? "align" : "type")}
 			onMouseDown={(event: MouseEvent) => {
 				event.preventDefault();
-				toggleBlock(editor(), props.format);
+				toggleBlock(editor, props.format);
 			}}
 		>
 			<Icon>{props.icon}</Icon>
@@ -198,13 +234,13 @@ const BlockButton = (props: { format: any; icon: any }) => {
 };
 
 const MarkButton = (props: { format: any; icon: any }) => {
-	const editor = useSlate();
+	const [editor] = useSlate();
 	return (
 		<Button
-			active={isMarkActive(editor(), props.format)}
+			active={isMarkActive(editor, props.format)}
 			onMouseDown={(event: MouseEvent) => {
 				event.preventDefault();
-				toggleMark(editor(), props.format);
+				toggleMark(editor, props.format);
 			}}
 		>
 			<Icon>{props.icon}</Icon>

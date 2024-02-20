@@ -1,33 +1,35 @@
-import { onMount, createEffect } from "solid-js";
+import { onMount, createEffect, createSignal } from "solid-js";
 import { SolidEditor } from "../plugin/solid-editor";
 import { useSlateStatic } from "./use-slate-static";
 
 export function useTrackUserInput() {
 	const editor = useSlateStatic();
 
-	let receivedUserInput: boolean = false;
-	let animationFrameIdRef: number = 0;
+	const [receivedUserInput, setReceivedUserInput] = createSignal(false);
+	const [animationFrameIdRef, setAnimationFrameIdRef] = createSignal(0);
 
 	const onUserInput = () => {
-		if (receivedUserInput) {
+		if (receivedUserInput()) {
 			return;
 		}
 
-		receivedUserInput = true;
+		setReceivedUserInput(true);
 
 		const window = SolidEditor.getWindow(editor());
-		window.cancelAnimationFrame(animationFrameIdRef);
+		window.cancelAnimationFrame(animationFrameIdRef());
 
-		animationFrameIdRef = window.requestAnimationFrame(() => {
-			receivedUserInput = false;
-		});
+		setAnimationFrameIdRef(
+			window.requestAnimationFrame(() => {
+				setReceivedUserInput(false);
+			})
+		);
 	};
 
-	onMount(() => () => cancelAnimationFrame(animationFrameIdRef));
+	onMount(() => () => cancelAnimationFrame(animationFrameIdRef()));
 
-	return {
+	return () => ({
 		receivedUserInput,
 		onUserInput,
-	};
+	});
 }
 

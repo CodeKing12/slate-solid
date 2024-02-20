@@ -127,6 +127,7 @@ export const withSolid = <T extends BaseEditor>(
 
 			case "set_selection": {
 				// Selection was manually set, don't restore the user selection after the change.
+				console.log("Setting Selection Change");
 				EDITOR_TO_USER_SELECTION.get(e)?.unref();
 				EDITOR_TO_USER_SELECTION.delete(e);
 				break;
@@ -313,8 +314,10 @@ export const withSolid = <T extends BaseEditor>(
 		// (2019/12/03)
 		// https://github.com/facebook/react/issues/14259#issuecomment-439702367
 
+		console.log("Getting onCOntext Change", e);
 		const onContextChange = EDITOR_TO_ON_CHANGE.get(e);
 
+		console.log("Change Occured", options, onContextChange);
 		if (onContextChange) {
 			onContextChange(options);
 		}

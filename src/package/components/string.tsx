@@ -19,6 +19,7 @@ const String = (props: { isLast: boolean; leaf: Text; parent: Element; text: Tex
 	const isMarkPlaceholder = () => Boolean(props.leaf[MARK_PLACEHOLDER_SYMBOL]);
 
 	let jsx = <TextString text={props.leaf.text} />;
+	console.log("Running text effects");
 
 	// COMPAT: Render text inside void nodes with a zero-width space.
 	// So the node can contain selection but the text is not visible.
@@ -74,6 +75,7 @@ const TextString = (props: { text: string; isTrailing?: boolean }) => {
 	);
 	let ref: HTMLSpanElement | undefined;
 	const getTextContent = () => {
+		console.log("Running Text", merge.text, merge.isTrailing);
 		return `${merge.text ?? ""}${merge.isTrailing ? "\n" : ""}`;
 	};
 	const [initialText] = createSignal(getTextContent);

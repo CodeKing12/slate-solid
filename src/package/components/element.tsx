@@ -6,7 +6,7 @@ import { SolidEditor } from "../plugin/solid-editor";
 import { useReadOnly } from "../hooks/use-read-only";
 import { useSlateStatic } from "../hooks/use-slate-static";
 
-import useChildren from "../hooks/use-children";
+// import useChildren from "../hooks/use-children";
 import {
 	EDITOR_TO_KEY_TO_ELEMENT,
 	ELEMENT_TO_NODE,
@@ -18,19 +18,22 @@ import { RenderElementProps, RenderLeafProps, RenderPlaceholderProps } from "./e
 
 import Text from "./text";
 import { Dynamic } from "solid-js/web";
+import Children from "../hooks/use-children";
 
 /**
  * Element.
  */
 
-const Element = (props: {
+export interface ElementComponentProps {
 	decorations: Range[];
 	element: SlateElement;
 	renderElement?: (props: RenderElementProps) => JSX.Element;
 	renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element;
 	renderLeaf?: (props: RenderLeafProps) => JSX.Element;
 	selection: Range | null;
-}) => {
+}
+
+const Element = (props: ElementComponentProps) => {
 	const merge = mergeProps(
 		{
 			renderElement: (p: RenderElementProps) => <DefaultElement {...p} />,
@@ -45,6 +48,7 @@ const Element = (props: {
 	const ref = (ref: HTMLElement | null) => {
 		// Update element-related weak maps with the DOM element ref.
 		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor());
+		console.log("Key: ", key(), ref);
 		if (ref) {
 			KEY_TO_ELEMENT?.set(key(), ref);
 			NODE_TO_ELEMENT.set(merge.element, ref);
@@ -55,14 +59,27 @@ const Element = (props: {
 		}
 	};
 
-	let children: JSX.Element = useChildren({
-		decorations: merge.decorations,
-		node: merge.element,
-		renderElement: merge.renderElement,
-		renderPlaceholder: merge.renderPlaceholder,
-		renderLeaf: merge.renderLeaf,
-		selection: merge.selection,
-	});
+	// let children: JSX.Element = useChildren({
+	// 	decorations: merge.decorations,
+	// 	node: merge.element,
+	// 	renderElement: merge.renderElement,
+	// 	renderPlaceholder: merge.renderPlaceholder,
+	// 	renderLeaf: merge.renderLeaf,
+	// 	selection: merge.selection,
+	// });
+
+	let children: JSX.Element = (
+		<Children
+			decorations={merge.decorations}
+			node={merge.element}
+			renderElement={merge.renderElement}
+			renderPlaceholder={merge.renderPlaceholder}
+			renderLeaf={merge.renderLeaf}
+			selection={merge.selection}
+		/>
+	);
+
+	console.log("Element re-created");
 
 	// Attributes that the developer must mix into the element in their
 	// custom node renderer component.
@@ -108,23 +125,26 @@ const Element = (props: {
 			const [[text]] = Node.texts(merge.element);
 
 			children = (
-				<Tag
-					data-slate-spacer
-					style={{
-						height: "0",
-						color: "transparent",
-						outline: "none",
-						position: "absolute",
-					}}
-				>
-					<Text
-						renderPlaceholder={merge.renderPlaceholder}
-						decorations={[]}
-						isLast={false}
-						parent={merge.element}
-						text={text}
-					/>
-				</Tag>
+				<>
+					<Tag
+						data-slate-spacer
+						style={{
+							height: "0",
+							color: "transparent",
+							outline: "none",
+							position: "absolute",
+						}}
+					>
+						<Text
+							renderPlaceholder={merge.renderPlaceholder}
+							decorations={[]}
+							isLast={false}
+							parent={merge.element}
+							text={text}
+						/>
+					</Tag>
+					{console.log("Text re-rendered by element.tsx")}
+				</>
 			);
 
 			NODE_TO_INDEX.set(text, 0);
@@ -133,7 +153,7 @@ const Element = (props: {
 		}
 	});
 
-	return <>{merge.renderElement({ attributes, children, element: merge.element })}</>;
+	return <>{merge.renderElement({ attributes, children: children, element: merge.element })}</>;
 };
 
 // Beware

@@ -35,14 +35,16 @@ function clearTimeoutRef(timeoutRef: TimerId) {
 /**
  * Individual leaves in a text node with unique formatting.
  */
-const Leaf = (props: {
+export interface LeafProps {
 	isLast: boolean;
 	leaf: Text;
 	parent: Element;
 	renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element;
 	renderLeaf?: (props: RenderLeafProps) => JSX.Element;
 	text: Text;
-}) => {
+}
+
+const Leaf = (props: LeafProps) => {
 	const merge = mergeProps(
 		{
 			renderLeaf: (props: RenderLeafProps) => <DefaultLeaf {...props} />,
