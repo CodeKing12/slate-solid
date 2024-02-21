@@ -6,6 +6,7 @@ import { PLACEHOLDER_SYMBOL, EDITOR_TO_PLACEHOLDER_ELEMENT } from "../utils/weak
 import { RenderLeafProps, RenderPlaceholderProps } from "./editable";
 import { useSlateStatic } from "../hooks/use-slate-static";
 import { IS_WEBKIT, IS_ANDROID } from "../utils/environment";
+import { unwrap } from "solid-js/store";
 
 // Delay the placeholder on Android to prevent the keyboard from closing.
 // (https://github.com/ianstormtaylor/slate/pull/5368)
@@ -62,10 +63,10 @@ const Leaf = (props: LeafProps) => {
 		disconnectPlaceholderResizeObserver(placeholderResizeObserver, placeholderEl == null);
 
 		if (placeholderEl == null) {
-			EDITOR_TO_PLACEHOLDER_ELEMENT.delete(editor());
+			EDITOR_TO_PLACEHOLDER_ELEMENT.delete(unwrap(editor()));
 			merge.leaf.onPlaceholderResize?.(null);
 		} else {
-			EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor(), placeholderEl);
+			EDITOR_TO_PLACEHOLDER_ELEMENT.set(unwrap(editor()), placeholderEl);
 
 			if (!placeholderResizeObserver) {
 				// Create a new observer and observe the placeholder element.

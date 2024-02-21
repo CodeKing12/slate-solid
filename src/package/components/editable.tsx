@@ -67,6 +67,7 @@ import { RestoreDOM } from "./restore-dom/restore-dom";
 import { AndroidInputManager } from "../hooks/android-input-manager/android-input-manager";
 import { Dynamic } from "solid-js/web";
 import Children from "../hooks/use-children";
+import { unwrap } from "solid-js/store";
 
 type DeferredOperation = () => void;
 type EventTargets = { currentTarget: HTMLDivElement; target: DOMElement };
@@ -170,7 +171,7 @@ export const Editable = (props: EditableProps) => {
 		local
 	);
 	const [editor, setEditor] = useSlate();
-	createEffect(() => console.log("Editor Children Updated: ", editor.children));
+	createEffect(() => console.log("Editor Children changed: ", editor.children));
 	// Rerender editor when composition status changed
 	const [isComposing, setIsComposing] = createSignal(false);
 	let ref: HTMLDivElement | null = null;
@@ -180,10 +181,10 @@ export const Editable = (props: EditableProps) => {
 	const userInputData = useTrackUserInput();
 
 	const [, forceRender] = createReducer((s) => s + 1, 0);
-	createRenderEffect(() => EDITOR_TO_FORCE_RENDER.set(editor, forceRender));
+	createRenderEffect(() => EDITOR_TO_FORCE_RENDER.set(unwrap(editor), forceRender));
 
 	// Update internal state on each render.
-	createRenderEffect(() => IS_READ_ONLY.set(editor, merged.readOnly));
+	createRenderEffect(() => IS_READ_ONLY.set(unwrap(editor), merged.readOnly));
 
 	// Keep track of some state for the event handler logic.
 	const state = createMemo(() => ({
@@ -246,9 +247,9 @@ export const Editable = (props: EditableProps) => {
 						console.log(state().latestElement);
 						state().latestElement = root.activeElement;
 						console.log(state().latestElement);
-						IS_FOCUSED.set(editor, true);
+						IS_FOCUSED.set(unwrap(editor), true);
 					} else {
-						IS_FOCUSED.delete(editor);
+						IS_FOCUSED.delete(unwrap(editor));
 					}
 
 					if (!domSelection) {
@@ -308,12 +309,12 @@ export const Editable = (props: EditableProps) => {
 		// Update element-related weak maps with the DOM element ref.
 		let window;
 		if (ref && (window = getDefaultView(ref))) {
-			EDITOR_TO_WINDOW.set(editor, window);
-			EDITOR_TO_ELEMENT.set(editor, ref);
-			NODE_TO_ELEMENT.set(editor, ref);
-			ELEMENT_TO_NODE.set(ref, editor);
+			EDITOR_TO_WINDOW.set(unwrap(editor), window);
+			EDITOR_TO_ELEMENT.set(unwrap(editor), ref);
+			NODE_TO_ELEMENT.set(unwrap(editor), ref);
+			ELEMENT_TO_NODE.set(ref, unwrap(editor));
 		} else {
-			NODE_TO_ELEMENT.delete(editor);
+			NODE_TO_ELEMENT.delete(unwrap(editor));
 		}
 	});
 
@@ -356,7 +357,7 @@ export const Editable = (props: EditableProps) => {
 			}
 
 			// verify that the dom selection is in the editor
-			const editorElement = EDITOR_TO_ELEMENT.get(editor)!;
+			const editorElement = EDITOR_TO_ELEMENT.get(unwrap(editor))!;
 			let hasDomSelectionInEditor = false;
 			if (editorElement.contains(anchorNode) && editorElement.contains(focusNode)) {
 				hasDomSelectionInEditor = true;
@@ -602,7 +603,7 @@ export const Editable = (props: EditableProps) => {
 						Transforms.select(editor, range);
 
 						if (selectionRef) {
-							EDITOR_TO_USER_SELECTION.set(editor, selectionRef);
+							EDITOR_TO_USER_SELECTION.set(unwrap(editor), selectionRef);
 						}
 					}
 				}
@@ -704,7 +705,7 @@ export const Editable = (props: EditableProps) => {
 						// https://www.w3.org/TR/input-events-2/
 						if (SolidEditor.isComposing(editor)) {
 							setIsComposing(false);
-							IS_COMPOSING.set(editor, false);
+							IS_COMPOSING.set(unwrap(editor), false);
 						}
 					}
 
@@ -731,8 +732,8 @@ export const Editable = (props: EditableProps) => {
 			}
 
 			// Restore the actual user section if nothing manually set it.
-			const toRestore = EDITOR_TO_USER_SELECTION.get(editor)?.unref();
-			EDITOR_TO_USER_SELECTION.delete(editor);
+			const toRestore = EDITOR_TO_USER_SELECTION.get(unwrap(editor))?.unref();
+			EDITOR_TO_USER_SELECTION.delete(unwrap(editor));
 
 			if (toRestore && (!editor.selection || !Range.equals(editor.selection, toRestore))) {
 				console.log("Selecting Transform toRestore");
@@ -747,8 +748,8 @@ export const Editable = (props: EditableProps) => {
 			onDOMSelectionChange().cancel();
 			scheduleOnDOMSelectionChange().cancel();
 
-			EDITOR_TO_ELEMENT.delete(editor);
-			NODE_TO_ELEMENT.delete(editor);
+			EDITOR_TO_ELEMENT.delete(unwrap(editor));
+			NODE_TO_ELEMENT.delete(unwrap(editor));
 
 			if (ref && HAS_BEFORE_INPUT_SUPPORT) {
 				// ts-expect-error The `beforeinput` event isn't recognized.
@@ -855,12 +856,12 @@ export const Editable = (props: EditableProps) => {
 				// While marks isn't a 'complete' text, we can still use loose Text.equals
 				// here which only compares marks anyway.
 				if (editor.marks && !Text.equals(text, editor.marks as Text, { loose: true })) {
-					EDITOR_TO_PENDING_INSERTION_MARKS.set(editor, editor.marks);
+					EDITOR_TO_PENDING_INSERTION_MARKS.set(unwrap(editor), editor.marks);
 					return;
 				}
 			}
 
-			EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor);
+			EDITOR_TO_PENDING_INSERTION_MARKS.delete(unwrap(editor));
 		});
 	});
 
@@ -1005,10 +1006,10 @@ export const Editable = (props: EditableProps) => {
 								domSelection?.removeAllRanges();
 							}
 
-							IS_FOCUSED.delete(editor);
+							IS_FOCUSED.delete(unwrap(editor));
 						}}
 						onClick={(event: MouseEvent) => {
-							return "premature";
+							// return "premature";
 							if (
 								SolidEditor.hasTarget(editor, event.target) &&
 								!isEventHandled(event, attributes.onClick) &&
@@ -1022,8 +1023,8 @@ export const Editable = (props: EditableProps) => {
 								// because onClick handlers can change the document before we get here.
 								// Therefore we must check that this path actually exists,
 								// and that it still refers to the same node.
-								console.log("Still returns something: ", Node.get(editor, path));
-								if (!Editor.hasPath(editor, path) || Node.get(editor, path) !== node) {
+								console.log("Still returns something: ", Node.get(unwrap(editor), path));
+								if (!Editor.hasPath(editor, path) || Node.get(unwrap(editor), path) !== node) {
 									return;
 								}
 
@@ -1065,7 +1066,7 @@ export const Editable = (props: EditableProps) => {
 								if (SolidEditor.isComposing(editor)) {
 									Promise.resolve().then(() => {
 										setIsComposing(false);
-										IS_COMPOSING.set(editor, false);
+										IS_COMPOSING.set(unwrap(editor), false);
 									});
 								}
 
@@ -1087,19 +1088,19 @@ export const Editable = (props: EditableProps) => {
 									!IS_UC_MOBILE &&
 									event.data
 								) {
-									const placeholderMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(editor);
-									EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor);
+									const placeholderMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(unwrap(editor));
+									EDITOR_TO_PENDING_INSERTION_MARKS.delete(unwrap(editor));
 
 									// Ensure we insert text with the marks the user was actually seeing
 									if (placeholderMarks !== undefined) {
-										EDITOR_TO_USER_MARKS.set(editor, editor.marks);
+										EDITOR_TO_USER_MARKS.set(unwrap(editor), editor.marks);
 										setEditor("marks", placeholderMarks);
 									}
 
 									Editor.insertText(editor, event.data);
 
-									const userMarks = EDITOR_TO_USER_MARKS.get(editor);
-									EDITOR_TO_USER_MARKS.delete(editor);
+									const userMarks = EDITOR_TO_USER_MARKS.get(unwrap(editor));
+									EDITOR_TO_USER_MARKS.delete(unwrap(editor));
 									if (userMarks !== undefined) {
 										setEditor("marks", userMarks);
 									}
@@ -1113,7 +1114,7 @@ export const Editable = (props: EditableProps) => {
 							) {
 								if (!SolidEditor.isComposing(editor)) {
 									setIsComposing(true);
-									IS_COMPOSING.set(editor, true);
+									IS_COMPOSING.set(unwrap(editor), true);
 								}
 							}
 						}}
@@ -1177,7 +1178,7 @@ export const Editable = (props: EditableProps) => {
 									} else {
 										const node = Node.parent(editor, editor.selection.anchor.path);
 										if (Editor.isVoid(editor, node)) {
-											Transforms.delete(editor);
+											Transforms.delete(unwrap(editor));
 										}
 									}
 								}
@@ -1245,7 +1246,7 @@ export const Editable = (props: EditableProps) => {
 										!Range.equals(draggedRange, range) &&
 										!Editor.void(editor, { at: range, voids: true })
 									) {
-										Transforms.delete(editor, {
+										Transforms.delete(unwrap(editor), {
 											at: draggedRange,
 										});
 									}
@@ -1296,11 +1297,11 @@ export const Editable = (props: EditableProps) => {
 									return;
 								}
 
-								IS_FOCUSED.set(editor, true);
+								IS_FOCUSED.set(unwrap(editor), true);
 							}
 						}}
 						onKeyDown={(event: KeyboardEvent) => {
-							return "premature";
+							// return "premature";
 							if (!merged.readOnly && SolidEditor.hasEditableTarget(editor, event.target)) {
 								androidInputManagerRef?.handleKeyDown(event);
 
@@ -1308,7 +1309,7 @@ export const Editable = (props: EditableProps) => {
 								// so we sometimes might end up stuck in a composition state even though we
 								// aren't composing any more.
 								if (SolidEditor.isComposing(editor) && event.isComposing === false) {
-									IS_COMPOSING.set(editor, false);
+									IS_COMPOSING.set(unwrap(editor), false);
 									setIsComposing(false);
 								}
 

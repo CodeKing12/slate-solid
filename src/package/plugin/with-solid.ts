@@ -16,6 +16,7 @@ import {
 	NODE_TO_KEY,
 } from "../utils/weak-maps";
 import { SolidEditor } from "./solid-editor";
+import { unwrap } from "solid-js/store";
 
 /**
  * `withReact` adds React and DOM specific behaviors to the editor.
@@ -35,7 +36,9 @@ export const withSolid = <T extends BaseEditor>(
 
 	// The WeakMap which maps a key to a specific HTMLElement must be scoped to the editor instance to
 	// avoid collisions between editors in the DOM that share the same value.
+	console.log("Setting: ", e);
 	EDITOR_TO_KEY_TO_ELEMENT.set(e, new WeakMap());
+	console.log("Weakmap EDITOR_TO_KEY_TO_ELEMENT", EDITOR_TO_KEY_TO_ELEMENT);
 
 	e.addMark = (key, value) => {
 		EDITOR_TO_SCHEDULE_FLUSH.get(e)?.();
@@ -158,7 +161,7 @@ export const withSolid = <T extends BaseEditor>(
 					changedPath = op.path;
 				}
 
-				const changedNode = Node.get(editor, Path.parent(changedPath));
+				const changedNode = Node.get(unwrap(editor), Path.parent(changedPath));
 				const changedNodeKey = SolidEditor.findKey(e, changedNode);
 				const changedPathRef = Editor.pathRef(e, Path.parent(changedPath));
 				pathRefMatches.push([changedPathRef, changedNodeKey]);

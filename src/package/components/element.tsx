@@ -19,6 +19,7 @@ import { RenderElementProps, RenderLeafProps, RenderPlaceholderProps } from "./e
 import Text from "./text";
 import { Dynamic } from "solid-js/web";
 import Children from "../hooks/use-children";
+import { unwrap } from "solid-js/store";
 
 /**
  * Element.
@@ -47,9 +48,10 @@ const Element = (props: ElementComponentProps) => {
 	const key = () => SolidEditor.findKey(editor(), merge.element);
 	const ref = (ref: HTMLElement | null) => {
 		// Update element-related weak maps with the DOM element ref.
-		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor());
-		console.log("Key: ", key(), ref);
+		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor()));
+		console.log("Key, Debugging .set: ", key(), ref, KEY_TO_ELEMENT);
 		if (ref) {
+			console.log("Setting Keys of Element");
 			KEY_TO_ELEMENT?.set(key(), ref);
 			NODE_TO_ELEMENT.set(merge.element, ref);
 			ELEMENT_TO_NODE.set(ref, merge.element);

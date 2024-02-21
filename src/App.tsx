@@ -2,7 +2,7 @@ import { Match, Switch, createEffect, createMemo, createRenderEffect, createSign
 import isHotkey from "is-hotkey";
 import { Editable, withSolid, useSlate, Slate, SolidEditor } from "./package";
 import { Editor, Transforms, createEditor, Descendant, Element as SlateElement, BaseSelection } from "slate";
-import { createStore } from "solid-js/store";
+import { createStore, unwrap } from "solid-js/store";
 import { Button, Icon, Toolbar } from "./components";
 
 const HOTKEYS = {
@@ -27,7 +27,7 @@ const App = () => {
 	createEffect(() => console.log("Children Changed effect", editor.children));
 
 	function testFunc() {
-		console.log(editor);
+		console.log("This is the editor: ", editor, unwrap(editor), unwrap(unwrap(editor)));
 		// setEditor("selection", {
 		// 	anchor: {
 		// 		path: [3, 0],
@@ -44,9 +44,33 @@ const App = () => {
 		setEditor("children", children);
 	}
 
-	function onEditorSelectionChange(selection: BaseSelection) {
-		console.log("New selection", selection);
-		setEditor("selection", selection);
+	function onEditorSelectionChange(selection?: BaseSelection) {
+		console.log("Running onEditorSelectionChange", selection);
+		if (!selection) {
+			console.log("No Selection changes");
+			return;
+		}
+		console.log(
+			"New selection",
+			selection
+			// ?? {
+			// 	anchor: {
+			// 		path: [Math.round((Math.random() * 10) / 3), 0],
+			// 		offset: Math.round(Math.random() * 10),
+			// 	},
+			// 	focus: {
+			// 		path: [Math.round((Math.random() * 10) / 3), 0],
+			// 		offset: Math.round(Math.random() * 10),
+			// 	},
+			// }
+		);
+		// setEditor((prev) => ({ ...prev, selection }));
+		setEditor("selection", (prev) => ({ ...prev, ...selection }));
+		// setEditor("selection", "anchor", "path", selection.anchor.path);
+		// setEditor("selection", "anchor", "offset", selection.anchor.offset);
+		// setEditor("selection", "focus", "path", selection.focus.path);
+		// setEditor("selection", "focus", "offset", selection.focus.offset);
+		console.log(editor);
 	}
 
 	return (

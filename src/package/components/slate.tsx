@@ -1,5 +1,5 @@
 import { JSX, createEffect, createSignal, onCleanup, splitProps } from "solid-js";
-import { Descendant, Editor, Node, Operation, Scrubber, Selection } from "slate";
+import { BaseSelection, Descendant, Editor, Node, Operation, Scrubber, Selection } from "slate";
 import { FocusedContext } from "../hooks/use-focused";
 import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
 import { SlateContext, SlateContextValue } from "../hooks/use-slate";
@@ -21,8 +21,8 @@ export const Slate = (props: {
 	initialValue: Descendant[];
 	children: JSX.Element;
 	onChange?: (value: Descendant[]) => void;
-	onSelectionChange?: (selection: Selection) => void;
-	onValueChange?: (value: Descendant[]) => void;
+	onSelectionChange?: (selection?: any) => void;
+	onValueChange?: (value?: Descendant[]) => void;
 }) => {
 	const [split, rest] = splitProps(props, [
 		"editor",
@@ -58,14 +58,14 @@ export const Slate = (props: {
 
 	const onContextChange = (options?: { operation?: Operation }) => {
 		if (split.onChange) {
-			console.log("Split Change");
+			console.log("Split Change", options);
 			split.onChange(split.editor.children);
 		}
 
 		switch (options?.operation?.type) {
 			case "set_selection":
-				console.log("Selection Change");
-				split.onSelectionChange?.(split.editor.selection);
+				console.log("Selection Change", options);
+				split.onSelectionChange?.(options.operation?.newProperties);
 				break;
 			default:
 				console.log("Value Change");
@@ -89,7 +89,7 @@ export const Slate = (props: {
 
 		// Beware
 		onCleanup(() => {
-			EDITOR_TO_ON_CHANGE.set(split.editor, () => {});
+			EDITOR_TO_ON_CHANGE.set(unwrap(split.editor), () => {});
 		});
 	});
 

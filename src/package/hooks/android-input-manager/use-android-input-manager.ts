@@ -5,6 +5,7 @@ import { EDITOR_TO_SCHEDULE_FLUSH } from "../../utils/weak-maps";
 import { createAndroidInputManager, CreateAndroidInputManagerOptions } from "./android-input-manager";
 import { useIsMounted } from "../use-is-mounted";
 import { useMutationObserver } from "../use-mutation-observer";
+import { unwrap } from "solid-js/store";
 
 type UseAndroidInputManagerOptions = {
 	node: HTMLElement | null;
@@ -36,7 +37,7 @@ export const useAndroidInputManager = !IS_ANDROID
 
 			useMutationObserver(split.node, inputManager().handleDomMutations, MUTATION_OBSERVER_CONFIG);
 
-			EDITOR_TO_SCHEDULE_FLUSH.set(editor(), inputManager().scheduleFlush);
+			EDITOR_TO_SCHEDULE_FLUSH.set(unwrap(editor()), inputManager().scheduleFlush);
 			if (isMounted) {
 				inputManager().flush();
 			}
