@@ -3,7 +3,7 @@ import isHotkey from "is-hotkey";
 import { Editable, withSolid, useSlate, Slate, SolidEditor } from "./package";
 import { Editor, Transforms, createEditor, Descendant, Element as SlateElement, BaseSelection } from "slate";
 import { createStore } from "solid-js/store";
-import { Button, Icon, Toolbar } from "./components";
+import { Button, ExampleContent, Icon, Toolbar } from "./components";
 
 const HOTKEYS = {
 	"mod+b": "bold",
@@ -40,45 +40,47 @@ const App = () => {
 	}
 
 	return (
-		<Slate
-			editor={editor}
-			initialValue={initialValue}
-			onValueChange={onEditorChange}
-			onSelectionChange={onEditorSelectionChange}
-		>
-			<Toolbar>
-				<MarkButton subscribe={store.version} format="bold" icon="format_bold" />
-				<MarkButton subscribe={store.version} format="italic" icon="format_italic" />
-				<MarkButton subscribe={store.version} format="underline" icon="format_underlined" />
-				<MarkButton subscribe={store.version} format="code" icon="code" />
-				<BlockButton subscribe={store.version} format="heading-one" icon="looks_one" />
-				<BlockButton subscribe={store.version} format="heading-two" icon="looks_two" />
-				<BlockButton subscribe={store.version} format="block-quote" icon="format_quote" />
-				<BlockButton subscribe={store.version} format="numbered-list" icon="format_list_numbered" />
-				<BlockButton subscribe={store.version} format="bulleted-list" icon="format_list_bulleted" />
-				<BlockButton subscribe={store.version} format="left" icon="format_align_left" />
-				<BlockButton subscribe={store.version} format="center" icon="format_align_center" />
-				<BlockButton subscribe={store.version} format="right" icon="format_align_right" />
-				<BlockButton subscribe={store.version} format="justify" icon="format_align_justify" />
-			</Toolbar>
-			<Editable
-				renderElement={renderElement}
-				renderLeaf={renderLeaf}
-				reactive={store}
-				placeholder="Enter some rich text…"
-				spellcheck
-				autofocus
-				onKeyDown={(event) => {
-					for (const hotkey in HOTKEYS) {
-						if (isHotkey(hotkey, event as any)) {
-							event.preventDefault();
-							const mark = HOTKEYS[hotkey];
-							toggleMark(editor(), mark);
+		<ExampleContent>
+			<Slate
+				editor={editor}
+				initialValue={initialValue}
+				onValueChange={onEditorChange}
+				onSelectionChange={onEditorSelectionChange}
+			>
+				<Toolbar>
+					<MarkButton subscribe={store.version} format="bold" icon="format_bold" />
+					<MarkButton subscribe={store.version} format="italic" icon="format_italic" />
+					<MarkButton subscribe={store.version} format="underline" icon="format_underlined" />
+					<MarkButton subscribe={store.version} format="code" icon="code" />
+					<BlockButton subscribe={store.version} format="heading-one" icon="looks_one" />
+					<BlockButton subscribe={store.version} format="heading-two" icon="looks_two" />
+					<BlockButton subscribe={store.version} format="block-quote" icon="format_quote" />
+					<BlockButton subscribe={store.version} format="numbered-list" icon="format_list_numbered" />
+					<BlockButton subscribe={store.version} format="bulleted-list" icon="format_list_bulleted" />
+					<BlockButton subscribe={store.version} format="left" icon="format_align_left" />
+					<BlockButton subscribe={store.version} format="center" icon="format_align_center" />
+					<BlockButton subscribe={store.version} format="right" icon="format_align_right" />
+					<BlockButton subscribe={store.version} format="justify" icon="format_align_justify" />
+				</Toolbar>
+				<Editable
+					renderElement={renderElement}
+					renderLeaf={renderLeaf}
+					reactive={store}
+					placeholder="Enter some rich text…"
+					spellcheck
+					autofocus
+					onKeyDown={(event) => {
+						for (const hotkey in HOTKEYS) {
+							if (isHotkey(hotkey, event as any)) {
+								event.preventDefault();
+								const mark = HOTKEYS[hotkey];
+								toggleMark(editor(), mark);
+							}
 						}
-					}
-				}}
-			/>
-		</Slate>
+					}}
+				/>
+			</Slate>
+		</ExampleContent>
 	);
 };
 

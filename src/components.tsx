@@ -171,3 +171,26 @@ export const Toolbar = (props: ParentProps<{ ref?: HTMLDivElement } & BaseProps>
 		)}
 	/>
 );
+
+export const Wrapper = (props: BaseProps) => (
+	<div
+		{...props}
+		class={cx(
+			props.class,
+			css`
+				max-width: 42em;
+				margin: 20px auto;
+				padding: 20px;
+			`
+		)}
+	/>
+);
+
+export const ExampleContent = (props: BaseProps) => (
+	<Wrapper
+		{...props}
+		class={css`
+			background: #fff;
+		`}
+	/>
+);
