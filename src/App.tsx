@@ -1,4 +1,4 @@
-import { Match, Switch, createEffect, createMemo } from "solid-js";
+import { Match, Switch, batch, createEffect, createMemo } from "solid-js";
 import isHotkey from "is-hotkey";
 import { Editable, withSolid, useSlate, Slate, SolidEditor } from "./package";
 import { Editor, Transforms, createEditor, Descendant, Element as SlateElement, BaseSelection } from "slate";
@@ -30,13 +30,18 @@ const App = () => {
 	// const randLetters = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
 
 	function onEditorSelectionChange(selection: BaseSelection) {
-		setStore("selection", selection);
-		setStore("version", (prev) => (prev += 1));
+		console.log("Updating Selection, Hotkey");
+		batch(() => {
+			setStore("selection", selection);
+			setStore("version", (prev) => (prev += 1));
+		});
 	}
 
 	function onEditorChange(children: Descendant[]) {
-		setStore("children", children);
-		setStore("version", (prev) => (prev += 1));
+		batch(() => {
+			setStore("children", children);
+			setStore("version", (prev) => (prev += 1));
+		});
 	}
 
 	return (

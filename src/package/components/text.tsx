@@ -17,35 +17,14 @@ export interface TextComponentProps {
 	renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element;
 	renderLeaf?: (props: RenderLeafProps) => JSX.Element;
 	text: SlateText;
+	reactive: any;
 }
 
 const Text = (props: TextComponentProps) => {
 	const editor = useSlateStatic();
 	let ref: HTMLSpanElement | undefined | null;
-	// May later convert to functions and <For> loop (or mapArray)
 	const leaves = () => SlateText.decorations(props.text, props.decorations);
 	const key = () => SolidEditor.findKey(editor, props.text);
-	const [children, setChildren] = createSignal<LeafProps[]>([]);
-
-	createRenderEffect(() => {
-		for (let i = 0; i < leaves().length; i++) {
-			const leaf = leaves()[i];
-
-			setChildren((prev) => [
-				...prev,
-				{
-					isLast: props.isLast && i === leaves().length - 1,
-					// Beware key
-					// key={`${key.id}-${i}`}
-					renderPlaceholder: props.renderPlaceholder,
-					leaf: leaf,
-					text: props.text,
-					parent: props.parent,
-					renderLeaf: props.renderLeaf,
-				},
-			]);
-		}
-	});
 
 	// Update element-related weak maps with the DOM element ref.
 	function callbackRef(span: HTMLSpanElement | null) {
@@ -63,24 +42,24 @@ const Text = (props: TextComponentProps) => {
 		}
 		ref = span;
 	}
+
 	return (
 		<span data-slate-node="text" ref={callbackRef}>
-			<For each={children()}>{(props) => <Leaf {...props} />}</For>
+			<For each={leaves()}>
+				{(leaf, i) => (
+					<Leaf
+						isLast={props.isLast && i() === leaves().length - 1}
+						renderPlaceholder={props.renderPlaceholder}
+						leaf={leaf}
+						text={props.text}
+						parent={props.parent}
+						renderLeaf={props.renderLeaf}
+					/>
+				)}
+			</For>
 		</span>
 	);
 };
-
-// Beware
-// const MemoizedText = React.memo(Text, (prev, next) => {
-// 	return (
-// 		next.parent === prev.parent &&
-// 		next.isLast === prev.isLast &&
-// 		next.renderLeaf === prev.renderLeaf &&
-// 		next.renderPlaceholder === prev.renderPlaceholder &&
-// 		next.text === prev.text &&
-// 		isTextDecorationsEqual(next.decorations, prev.decorations)
-// 	);
-// });
 
 export default Text;
 

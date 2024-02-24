@@ -18,7 +18,7 @@ import { RenderElementProps, RenderLeafProps, RenderPlaceholderProps } from "./e
 
 import Text from "./text";
 import { Dynamic } from "solid-js/web";
-import Children from "../hooks/use-children";
+import Children from "./children";
 import { unwrap } from "solid-js/store";
 
 /**

@@ -67,7 +67,7 @@ import {
 import { RestoreDOM } from "./restore-dom/restore-dom";
 import { AndroidInputManager } from "../hooks/android-input-manager/android-input-manager";
 import { Dynamic } from "solid-js/web";
-import Children from "../hooks/use-children";
+import Children from "./children";
 import { EditorStoreObj } from "../../App";
 
 type DeferredOperation = () => void;
@@ -233,6 +233,7 @@ export const Editable = (props: EditableProps) => {
 	const onDOMSelectionChange = createMemo(
 		on([() => merged.reactive.children, () => merged.reactive.selection, () => merged.readOnly, state], () =>
 			throttle(() => {
+				console.log("Running throttler");
 				const androidInputManager = androidInputManagerRef;
 				if (
 					(IS_ANDROID || !SolidEditor.isComposing(editor)) &&
@@ -769,11 +770,13 @@ export const Editable = (props: EditableProps) => {
 		const window = SolidEditor.getWindow(editor);
 
 		window.document.addEventListener("selectionchange", () => {
+			console.log("Running Selection Change");
 			return scheduleOnDOMSelectionChange()();
 		});
-		// onCleanup(() => {
-		// 	window.document.removeEventListener("selectionchange", scheduleOnDOMSelectionChange);
-		// });
+
+		onCleanup(() => {
+			window.document.removeEventListener("selectionchange", scheduleOnDOMSelectionChange);
+		});
 	});
 
 	const decorations = () => merged.decorate([editor, []]);
@@ -1365,7 +1368,10 @@ export const Editable = (props: EditableProps) => {
 								// the void node with the zero-width space not being an empty
 								// string.
 								if (Hotkeys.isMoveBackward(event)) {
-									event.preventDefault();
+									// There is no need to prevent default in SolidJS, as opposed to the React package
+									// where the handler is called twice and the caret is moved forward/backward
+									// twice for each arrow press
+									// event.preventDefault();
 
 									if (editor.selection && Range.isCollapsed(editor.selection)) {
 										Transforms.move(editor, { reverse: !isRTL });
@@ -1378,11 +1384,12 @@ export const Editable = (props: EditableProps) => {
 									return;
 								}
 
-								// console.log("HotKey is MoveForward: ", Hotkeys.isMoveForward(event));
+								console.log("HotKey is MoveForward: ", Hotkeys.isMoveForward(event));
 								if (Hotkeys.isMoveForward(event)) {
-									event.preventDefault();
+									// event.preventDefault();
 
 									if (editor.selection && Range.isCollapsed(editor.selection)) {
+										console.log("Moving Forward", editor, editor.selection);
 										Transforms.move(editor, { reverse: isRTL });
 									} else {
 										Transforms.collapse(editor, {
@@ -1394,7 +1401,7 @@ export const Editable = (props: EditableProps) => {
 								}
 
 								if (Hotkeys.isMoveWordBackward(event)) {
-									event.preventDefault();
+									// event.preventDefault();
 
 									if (editor.selection && Range.isExpanded(editor.selection)) {
 										Transforms.collapse(editor, { edge: "focus" });
@@ -1405,7 +1412,7 @@ export const Editable = (props: EditableProps) => {
 								}
 
 								if (Hotkeys.isMoveWordForward(event)) {
-									event.preventDefault();
+									// event.preventDefault();
 
 									if (editor.selection && Range.isExpanded(editor.selection)) {
 										Transforms.collapse(editor, { edge: "focus" });

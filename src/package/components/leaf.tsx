@@ -1,4 +1,15 @@
-import { createSignal, createEffect, JSX, mergeProps, createRenderEffect, on, onCleanup } from "solid-js";
+import {
+	createSignal,
+	createEffect,
+	JSX,
+	mergeProps,
+	createRenderEffect,
+	on,
+	onCleanup,
+	Switch,
+	Match,
+	Show,
+} from "solid-js";
 import { Element, Text } from "slate";
 import { ResizeObserver as ResizeObserverPolyfill } from "@juggle/resize-observer";
 import String from "./string";
@@ -80,9 +91,8 @@ const Leaf = (props: LeafProps) => {
 		}
 	};
 
-	let children = <String isLast={merge.isLast} leaf={merge.leaf} parent={merge.parent} text={merge.text} />;
-
 	const leafIsPlaceholder = () => Boolean(merge.leaf[PLACEHOLDER_SYMBOL]);
+
 	createEffect(
 		on([leafIsPlaceholder], () => {
 			if (leafIsPlaceholder()) {
@@ -101,63 +111,50 @@ const Leaf = (props: LeafProps) => {
 		})
 	);
 
-	createRenderEffect(() => {
-		if (leafIsPlaceholder() && showPlaceholder()) {
-			const placeholderProps: RenderPlaceholderProps = {
-				children: merge.leaf.placeholder,
+	return (
+		<>
+			{merge.renderLeaf({
 				attributes: {
-					"data-slate-placeholder": true,
-					style: {
-						position: "absolute",
-						top: 0,
-						"pointer-events": "none",
-						width: "100%",
-						"max-width": "100%",
-						display: "block",
-						opacity: "0.333",
-						"user-select": "none",
-						"text-decoration": "none",
-						// Fixes https://github.com/udecode/plate/issues/2315
-						"-webkit-user-modify": IS_WEBKIT ? "inherit" : undefined,
-					},
-					contentEditable: false,
-					ref: callbackPlaceholderRef,
+					"data-slate-leaf": true,
 				},
-			};
-
-			children = (
-				<>
-					{merge.renderPlaceholder(placeholderProps)}
-					{children}
-				</>
-			);
-		}
-	});
-
-	// COMPAT: Having the `data-` attributes on these leaf elements ensures that
-	// in certain misbehaving browsers they aren't weirdly cloned/destroyed by
-	// contenteditable behaviors. (2019/05/08)
-	const attributes: {
-		"data-slate-leaf": true;
-	} = {
-		"data-slate-leaf": true,
-	};
-
-	return <>{merge.renderLeaf({ attributes, children, leaf: merge.leaf, text: merge.text })}</>;
+				children: (
+					<Show
+						when={leafIsPlaceholder() && showPlaceholder()}
+						fallback={
+							<String isLast={merge.isLast} leaf={merge.leaf} parent={merge.parent} text={merge.text} />
+						}
+					>
+						{/* <p>Rendering</p> */}
+						{merge.renderPlaceholder({
+							children: merge.leaf.placeholder,
+							attributes: {
+								"data-slate-placeholder": true,
+								style: {
+									position: "absolute",
+									top: 0,
+									"pointer-events": "none",
+									width: "100%",
+									"max-width": "100%",
+									display: "block",
+									opacity: "0.333",
+									"user-select": "none",
+									"text-decoration": "none",
+									// Fixes https://github.com/udecode/plate/issues/2315
+									"-webkit-user-modify": IS_WEBKIT ? "inherit" : undefined,
+								},
+								contentEditable: false,
+								ref: callbackPlaceholderRef,
+							},
+						})}
+						<String isLast={merge.isLast} leaf={merge.leaf} parent={merge.parent} text={merge.text} />
+					</Show>
+				),
+				leaf: merge.leaf,
+				text: merge.text,
+			})}
+		</>
+	);
 };
-
-// Beware
-// const MemoizedLeaf = React.memo(Leaf, (prev, next) => {
-// 	return (
-// 		next.parent === prev.parent &&
-// 		next.isLast === prev.isLast &&
-// 		next.renderLeaf === prev.renderLeaf &&
-// 		next.renderPlaceholder === prev.renderPlaceholder &&
-// 		next.text === prev.text &&
-// 		Text.equals(next.leaf, prev.leaf) &&
-// 		next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL]
-// 	);
-// });
 
 export const DefaultLeaf = (props: RenderLeafProps) => {
 	return <span {...props.attributes}>{props.children}</span>;

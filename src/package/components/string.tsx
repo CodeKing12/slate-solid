@@ -62,52 +62,15 @@ const TextString = (props: { text: string; isTrailing?: boolean }) => {
 		props
 	);
 	let ref: HTMLSpanElement | undefined;
-	const getTextContent = () => {
-		return `${merge.text ?? ""}${merge.isTrailing ? "\n" : ""}`;
-	};
-	const [initialText] = createSignal(getTextContent);
 
-	// This is the actual text rendering boundary where we interface with the DOM
-	// The text is not rendered as part of the virtual DOM, as since we handle basic character insertions natively,
-	// updating the DOM is not a one way dataflow anymore. What we need here is not reconciliation and diffing
-	// with previous version of the virtual DOM, but rather diffing with the actual DOM element, and replace the DOM <span> content
-	// exactly if and only if its current content does not match our current virtual DOM.
-	// Otherwise the DOM TextNode would always be replaced by React as the user types, which interferes with native text features,
-	// eg makes native spellcheck opt out from checking the text node.
-
-	// useLayoutEffect: updating our span before browser paint
-	useIsomorphicLayoutEffect(() => {
-		// null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
-		const textWithTrailing = getTextContent();
-
-		if (ref && ref.textContent !== textWithTrailing) {
-			ref.textContent = textWithTrailing;
-		}
-
-		// intentionally not specifying dependencies, so that this effect runs on every render
-		// as this effectively replaces "specifying the text in the virtual DOM under the <span> below" on each render
-	});
-
-	// We intentionally render a memoized <span> that only receives the initial text content when the component is mounted.
-	// We defer to the layout effect above to update the `textContent` of the span element when needed.
-	// return <MemoizedText ref={ref}>{initialText}</MemoizedText>;
 	return (
-		<span data-slate-string ref={ref}>
-			{initialText()()}
-		</span>
+		<span
+			data-slate-string="true"
+			ref={ref}
+			innerText={`${merge.text ?? ""}${merge.isTrailing ? "\n" : ""}`}
+		></span>
 	);
 };
-
-// Maybe-Beware
-// const MemoizedText = memo(
-// 	forwardRef<HTMLSpanElement, { children: string }>((props, ref) => {
-// 		return (
-// 			<span data-slate-string ref={ref}>
-// 				{props.children}
-// 			</span>
-// 		);
-// 	})
-// );
 
 /**
  * Leaf strings without text, render as zero-width strings.

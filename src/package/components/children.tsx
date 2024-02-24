@@ -1,13 +1,13 @@
 import { Ancestor, Descendant, Editor, Element, Range } from "slate";
-import { RenderElementProps, RenderLeafProps, RenderPlaceholderProps } from "../components/editable";
+import { RenderElementProps, RenderLeafProps, RenderPlaceholderProps } from "./editable";
 import { createStore } from "solid-js/store";
-import ElementComponent, { ElementComponentProps } from "../components/element";
-import TextComponent, { TextComponentProps } from "../components/text";
+import ElementComponent, { ElementComponentProps } from "./element";
+import TextComponent, { TextComponentProps } from "./text";
 import { SolidEditor } from "../plugin/solid-editor";
 import { NODE_TO_INDEX, NODE_TO_PARENT } from "../utils/weak-maps";
-import { useDecorate } from "./use-decorate";
-import { SelectedContext } from "./use-selected";
-import { useSlateStatic } from "./use-slate-static";
+import { useDecorate } from "../hooks/use-decorate";
+import { SelectedContext } from "../hooks/use-selected";
+import { useSlateStatic } from "../hooks/use-slate-static";
 import { For, Index, JSX, Match, Switch, createEffect, createRenderEffect, createSignal } from "solid-js";
 import { cloneDeep, toInteger } from "lodash";
 
@@ -73,6 +73,7 @@ const Children = (props: {
 						return (
 							<TextComponent
 								decorations={ds}
+								reactive={props.reactive.children[index()]}
 								isLast={isLeafBlock() && index() === props.node.children.length - 1}
 								parent={props.node}
 								renderPlaceholder={props.renderPlaceholder}
