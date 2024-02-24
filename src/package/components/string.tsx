@@ -1,7 +1,5 @@
 import { Match, Switch, createRenderEffect, createSignal, mergeProps } from "solid-js";
 import { Editor, Text, Path, Element, Node } from "slate";
-
-// index index-fix
 import { SolidEditor } from "../plugin/solid-editor";
 import { useSlateStatic } from "../hooks/use-slate-static";
 import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
@@ -24,61 +22,28 @@ const String = (props: { isLast: boolean; leaf: Text; parent: Element; text: Tex
 		!editor.isInline(props.parent) &&
 		Editor.string(editor, parentPath()) === "";
 
-	let jsx = <TextString text={props.leaf.text} />;
-	console.log("Running text effects");
-
-	// COMPAT: Render text inside void nodes with a zero-width space.
-	// So the node can contain selection but the text is not visible.
-	// createRenderEffect(() => {
-	// 	if (editor.isVoid(props.parent)) {
-	// 		jsx = <ZeroWidthString length={Node.string(props.parent).length} />;
-	// 	}
-	// });
-
-	// COMPAT: If this is the last text node in an empty block, render a zero-
-	// width space that will convert into a line break when copying and pasting
-	// to support expected plain text.
-	// createRenderEffect(() => {
-	// 	if (
-	// 		props.leaf.text === "" &&
-	// 		props.parent.children[props.parent.children.length - 1] === props.text &&
-	// 		!editor.isInline(props.parent) &&
-	// 		Editor.string(editor, parentPath()) === ""
-	// 	) {
-	// 		jsx = <ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder()} />;
-	// 	}
-	// });
-
-	// COMPAT: If the text is empty, it's because it's on the edge of an inline
-	// node, so we render a zero-width space so that the selection can be
-	// inserted next to it still.
-	// createRenderEffect(() => {
-	// 	if (props.leaf.text === "") {
-	// 		jsx = <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />;
-	// 	}
-	// });
-
-	// COMPAT: Browsers will collapse trailing new lines at the end of blocks,
-	// so we need to add an extra trailing new lines to prevent that.
-	// createRenderEffect(() => {
-	// 	if (props.isLast && props.leaf.text.slice(-1) === "\n") {
-	// 		jsx = <TextString isTrailing text={props.leaf.text} />;
-	// 	}
-	// });
-
 	return (
 		<>
 			<Switch fallback={<TextString text={props.leaf.text} />}>
 				<Match when={editor.isVoid(props.parent)}>
+					{/* COMPAT: Render text inside void nodes with a zero-width space. So the node can contain
+					selection but the text is not visible. */}
 					<ZeroWidthString length={Node.string(props.parent).length} />
 				</Match>
 				<Match when={isLastNodeInEmptyBlock()}>
+					{/* COMPAT: If this is the last text node in an empty block, render a zero-width space that will
+					convert into a line break when copying and pasting // to support expected plain text. */}
 					<ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder()} />
 				</Match>
 				<Match when={props.leaf.text === ""}>
+					{/* COMPAT: If the text is empty, it's because it's on the edge of an inline
+					node, so we render a zero-width space so that the selection can be
+					inserted next to it still. */}
 					<ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />
 				</Match>
 				<Match when={props.isLast && props.leaf.text.slice(-1) === "\n"}>
+					{/* COMPAT: Browsers will collapse trailing new lines at the end of blocks,
+					so we need to add an extra trailing new lines to prevent that. */}
 					<TextString isTrailing text={props.leaf.text} />
 				</Match>
 			</Switch>
@@ -98,7 +63,6 @@ const TextString = (props: { text: string; isTrailing?: boolean }) => {
 	);
 	let ref: HTMLSpanElement | undefined;
 	const getTextContent = () => {
-		console.log("Running Text", merge.text, merge.isTrailing);
 		return `${merge.text ?? ""}${merge.isTrailing ? "\n" : ""}`;
 	};
 	const [initialText] = createSignal(getTextContent);
@@ -128,7 +92,7 @@ const TextString = (props: { text: string; isTrailing?: boolean }) => {
 	// We defer to the layout effect above to update the `textContent` of the span element when needed.
 	// return <MemoizedText ref={ref}>{initialText}</MemoizedText>;
 	return (
-		<span data-slate-string="true" ref={ref}>
+		<span data-slate-string ref={ref}>
 			{initialText()()}
 		</span>
 	);

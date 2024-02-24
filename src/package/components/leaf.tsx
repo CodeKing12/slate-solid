@@ -76,7 +76,6 @@ const Leaf = (props: LeafProps) => {
 				});
 			}
 			placeholderResizeObserver.observe(placeholderEl);
-			console.log("Got to placeholder ref");
 			placeholderRef = placeholderEl;
 		}
 	};

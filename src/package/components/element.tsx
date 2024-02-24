@@ -42,7 +42,6 @@ const Element = (props: ElementComponentProps) => {
 		},
 		props
 	);
-	// console.log("Came this far part 2");
 	const editor = useSlateStatic();
 	const readOnly = useReadOnly();
 	const isInline = () => editor.isInline(merge.element);
@@ -50,9 +49,7 @@ const Element = (props: ElementComponentProps) => {
 	const ref = (ref: HTMLElement | null) => {
 		// Update element-related weak maps with the DOM element ref.
 		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor));
-		console.log("Key, Debugging .set: ", key(), ref, KEY_TO_ELEMENT);
 		if (ref) {
-			console.log("Setting Keys of Element");
 			KEY_TO_ELEMENT?.set(key(), ref);
 			NODE_TO_ELEMENT.set(merge.element, ref);
 			ELEMENT_TO_NODE.set(ref, merge.element);
@@ -82,8 +79,6 @@ const Element = (props: ElementComponentProps) => {
 			selection={merge.selection}
 		/>
 	);
-
-	console.log("Element re-created");
 
 	// Attributes that the developer must mix into the element in their
 	// custom node renderer component.
@@ -147,13 +142,11 @@ const Element = (props: ElementComponentProps) => {
 							text={text}
 						/>
 					</Tag>
-					{console.log("Text re-rendered by element.tsx")}
 				</>
 			);
 
 			NODE_TO_INDEX.set(text, 0);
 			NODE_TO_PARENT.set(text, merge.element);
-			console.log("Set Parent 2");
 		}
 	});
 

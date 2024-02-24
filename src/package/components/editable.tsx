@@ -174,9 +174,7 @@ export const Editable = (props: EditableProps) => {
 		local
 	);
 	const editor = useSlate();
-	// const editorStore = useEditorStore();
-	// console.log("The Store: ", editorStore);
-	createEffect(() => console.log("Editor Children Changed / Should Change: ", merged.reactive.children));
+
 	// Rerender editor when composition status changed
 	const [isComposing, setIsComposing] = createSignal(false);
 	let ref: HTMLDivElement | null = null;
@@ -204,7 +202,6 @@ export const Editable = (props: EditableProps) => {
 	createEffect(
 		on([() => merged.autofocus], () => {
 			if (ref && merged.autofocus) {
-				console.log("Focusing Div");
 				ref.focus();
 			}
 		})
@@ -236,7 +233,6 @@ export const Editable = (props: EditableProps) => {
 	const onDOMSelectionChange = createMemo(
 		on([() => merged.reactive.children, () => merged.reactive.selection, () => merged.readOnly, state], () =>
 			throttle(() => {
-				console.log("Called this throttler Selecting", merged.reactive.selection, merged.reactive.children);
 				const androidInputManager = androidInputManagerRef;
 				if (
 					(IS_ANDROID || !SolidEditor.isComposing(editor)) &&
@@ -248,10 +244,7 @@ export const Editable = (props: EditableProps) => {
 					const domSelection = root.getSelection();
 
 					if (root.activeElement === el) {
-						console.log("Running activeElement === el", root.activeElement, el);
-						console.log(state().latestElement);
 						state().latestElement = root.activeElement;
-						console.log(state().latestElement);
 						IS_FOCUSED.set(editor, true);
 					} else {
 						IS_FOCUSED.delete(editor);
@@ -281,7 +274,6 @@ export const Editable = (props: EditableProps) => {
 								!androidInputManager?.hasPendingChanges() &&
 								!androidInputManager?.isFlushing()
 							) {
-								console.log("Selecting a point now", range, domSelection, root);
 								Transforms.select(editor, range);
 							} else {
 								androidInputManager?.handleUserSelect(range);
@@ -291,7 +283,6 @@ export const Editable = (props: EditableProps) => {
 
 					// Deselect the editor if the dom selection is not selectable in readonly mode
 					if (merged.readOnly && (!anchorNodeSelectable || !focusNodeSelectable)) {
-						console.log("Ran deselector");
 						Transforms.deselect(editor);
 					}
 				}
@@ -313,7 +304,6 @@ export const Editable = (props: EditableProps) => {
 	createEffect(
 		on([() => props.reactive.children, () => props.reactive.selection], () => {
 			// Update element-related weak maps with the DOM element ref.
-			console.log("Running DOM NODE createEffect");
 			let window;
 			if (ref && (window = getDefaultView(ref))) {
 				EDITOR_TO_WINDOW.set(editor, window);
@@ -399,7 +389,6 @@ export const Editable = (props: EditableProps) => {
 				// but Slate's value is not being updated through any operation
 				// and thus it doesn't transform selection on its own
 				if (editor.selection && !SolidEditor.hasRange(editor, editor.selection)) {
-					console.log("Setting Selection");
 					editor.selection = SolidEditor.toSlateRange(editor, domSelection, {
 						exactMatch: false,
 						suppressThrow: true,
@@ -459,7 +448,6 @@ export const Editable = (props: EditableProps) => {
 					const ensureDomSelection = (forceChange?: boolean) => {
 						try {
 							const el = SolidEditor.toDOMNode(editor, editor);
-							console.log("Focusing el");
 							el.focus();
 
 							setDomSelection(forceChange);
@@ -517,7 +505,6 @@ export const Editable = (props: EditableProps) => {
 			onDOMSelectionChange().flush();
 
 			const { inputType: type } = event;
-			console.log("Running handler", type);
 			const data = (event as any).dataTransfer || event.data || undefined;
 
 			const isCompositionChange = type === "insertCompositionText" || type === "deleteCompositionText";
@@ -607,7 +594,6 @@ export const Editable = (props: EditableProps) => {
 						const selectionRef =
 							!isCompositionChange && editor.selection && Editor.rangeRef(editor, editor.selection);
 
-						console.log("manual-3");
 						Transforms.select(editor, range);
 
 						if (selectionRef) {
@@ -720,17 +706,14 @@ export const Editable = (props: EditableProps) => {
 					// use a weak comparison instead of 'instanceof' to allow
 					// programmatic access of paste events coming from external windows
 					// like cypress where cy.window does not work realibly
-					console.log("got here in inserttext: ", data, typeof data);
 					if (data?.constructor.name === "DataTransfer") {
 						SolidEditor.insertData(editor, data);
 					} else if (typeof data === "string") {
 						// Only insertText operations use the native functionality, for now.
 						// Potentially expand to single character deletes, as well.
 						if (native) {
-							console.log("Should do this");
 							setDeferredOperations((prev) => [...prev, () => Editor.insertText(editor, data)]);
 						} else {
-							console.log("Just insert text", editor, data);
 							Editor.insertText(editor, data);
 						}
 					}
@@ -744,14 +727,12 @@ export const Editable = (props: EditableProps) => {
 			EDITOR_TO_USER_SELECTION.delete(editor);
 
 			if (toRestore && (!editor.selection || !Range.equals(editor.selection, toRestore))) {
-				console.log("Selecting Transform toRestore", editor, toRestore);
 				Transforms.select(editor, toRestore);
 			}
 		}
 	};
 
 	const callbackRef = (node: HTMLDivElement | null) => {
-		console.log("Callback Ref is called successfully");
 		if (node == null) {
 			onDOMSelectionChange().cancel();
 			scheduleOnDOMSelectionChange().cancel();
@@ -788,7 +769,6 @@ export const Editable = (props: EditableProps) => {
 		const window = SolidEditor.getWindow(editor);
 
 		window.document.addEventListener("selectionchange", () => {
-			console.log("Selection called");
 			return scheduleOnDOMSelectionChange()();
 		});
 		// onCleanup(() => {
@@ -851,14 +831,11 @@ export const Editable = (props: EditableProps) => {
 		}
 	});
 
-	createEffect(() => console.log("Selection effect", editor.selection));
-
 	// Update EDITOR_TO_MARK_PLACEHOLDER_MARKS in setTimeout useEffect to ensure we don't set it
 	// before we receive the composition end event.
 	createEffect(
 		on([() => props.reactive.version], () => {
 			setTimeout(() => {
-				console.log("Running Settimeout effect");
 				if (editor.selection) {
 					const text = Node.leaf(editor, editor.selection.anchor.path);
 
@@ -953,7 +930,6 @@ export const Editable = (props: EditableProps) => {
 							// to stop rendering, so that browser functions like autocorrect
 							// and spellcheck work as expected.
 							for (const op of deferredOperations()) {
-								console.log("Running this");
 								op();
 							}
 							setDeferredOperations([]);
@@ -1027,13 +1003,11 @@ export const Editable = (props: EditableProps) => {
 							) {
 								const node = SolidEditor.toSlateNode(editor, event.target);
 								const path = SolidEditor.findPath(editor, node);
-								console.log("Clicked textbox at", event.target, path, node, editor);
 
 								// At this time, the Slate document may be arbitrarily different,
 								// because onClick handlers can change the document before we get here.
 								// Therefore we must check that this path actually exists,
 								// and that it still refers to the same node.
-								console.log("Still returns something: ", Node.get(editor, path));
 								if (!Editor.hasPath(editor, path) || Node.get(editor, path) !== node) {
 									return;
 								}
@@ -1050,7 +1024,6 @@ export const Editable = (props: EditableProps) => {
 									}
 
 									const range = Editor.range(editor, blockPath);
-									console.log("manual-1");
 									Transforms.select(editor, range);
 									return;
 								}
@@ -1066,7 +1039,6 @@ export const Editable = (props: EditableProps) => {
 
 								if (startVoid && endVoid && Path.equals(startVoid[1], endVoid[1])) {
 									const range = Editor.range(editor, start);
-									console.log("manual-2");
 									Transforms.select(editor, range);
 								}
 							}
@@ -1129,7 +1101,6 @@ export const Editable = (props: EditableProps) => {
 							}
 						}}
 						onCompositionStart={(event: CompositionEvent) => {
-							console.log("Composed", event);
 							if (SolidEditor.hasSelectableTarget(editor, event.target)) {
 								androidInputManagerRef?.handleCompositionStart(event);
 
@@ -1152,7 +1123,6 @@ export const Editable = (props: EditableProps) => {
 										const [, inlinePath] = inline;
 										if (Editor.isEnd(editor, editor.selection.anchor, inlinePath)) {
 											const point = Editor.after(editor, inlinePath)!;
-											console.log("Setting Selection", point);
 											Transforms.setSelection(editor, {
 												anchor: point,
 												focus: point,
@@ -1326,11 +1296,9 @@ export const Editable = (props: EditableProps) => {
 								if (isEventHandled(event, attributes.onKeyDown) || SolidEditor.isComposing(editor)) {
 									return;
 								}
-								console.log(editor.children);
 
 								const element =
 									editor.children[editor.selection !== null ? editor.selection.focus.path[0] : 0];
-								console.log("Still got the element: ", element);
 								const isRTL = getDirection(Node.string(element)) === "rtl";
 
 								// COMPAT: Since we prevent the default behavior on
@@ -1410,7 +1378,7 @@ export const Editable = (props: EditableProps) => {
 									return;
 								}
 
-								console.log("HotKey is MoveForward: ", Hotkeys.isMoveForward(event));
+								// console.log("HotKey is MoveForward: ", Hotkeys.isMoveForward(event));
 								if (Hotkeys.isMoveForward(event)) {
 									event.preventDefault();
 

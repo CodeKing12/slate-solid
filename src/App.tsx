@@ -1,8 +1,8 @@
-import { Match, Switch, createEffect, createMemo, createRenderEffect, createSignal } from "solid-js";
+import { Match, Switch, createEffect, createMemo } from "solid-js";
 import isHotkey from "is-hotkey";
 import { Editable, withSolid, useSlate, Slate, SolidEditor } from "./package";
 import { Editor, Transforms, createEditor, Descendant, Element as SlateElement, BaseSelection } from "slate";
-import { createStore, unwrap } from "solid-js/store";
+import { createStore } from "solid-js/store";
 import { Button, Icon, Toolbar } from "./components";
 
 const HOTKEYS = {
@@ -25,33 +25,16 @@ const App = () => {
 	const renderLeaf = (props: any) => <Leaf {...props} />;
 	const editor = createMemo(() => withSolid(createEditor()));
 	const [store, setStore] = createStore<EditorStoreObj>({ children: [], selection: null, version: 0 });
-	// const [signal, setSignal] = createSignal<EditorStoreObj>({ children: [] });
 
-	// console.log("Just created", editor);
+	// For debugging purposes
+	// const randLetters = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
 
-	// createEffect(() => console.log("Selection changed effect", editor.selection));
-	createEffect(() => console.log("Children Changed effect", store.children));
-	const randLetters = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
-
-	// function onEditorChange(children: Descendant[]) {
-	// 	setEditor("children", children);
-	// }
-
-	function testFunc() {}
-
-	function onEditorSelectionChange(selection?: BaseSelection) {
-		console.log("Running onEditorSelectionChange", selection);
-		if (!selection) {
-			console.log("No Selection changes");
-			return;
-		}
-		console.log("New selection - No setEditor()", selection);
+	function onEditorSelectionChange(selection: BaseSelection) {
 		setStore("selection", selection);
 		setStore("version", (prev) => (prev += 1));
 	}
 
 	function onEditorChange(children: Descendant[]) {
-		console.log("Editor Children Updated/Changed", children, editor());
 		setStore("children", children);
 		setStore("version", (prev) => (prev += 1));
 	}
@@ -59,9 +42,6 @@ const App = () => {
 	return (
 		<Slate
 			editor={editor}
-			reactive={store.version}
-			// editorStore={editor}
-			// setEditor={setEditor}
 			initialValue={initialValue}
 			onValueChange={onEditorChange}
 			onSelectionChange={onEditorSelectionChange}
@@ -98,7 +78,6 @@ const App = () => {
 					}
 				}}
 			/>
-			<button onClick={testFunc}>Test Button</button>
 		</Slate>
 	);
 };
@@ -163,6 +142,7 @@ const isMarkActive = (editor: SolidEditor, reactive: number | null, format: any)
 
 const Element = (props: { attributes: any; children: any; element: any }) => {
 	const style = () => ({ "text-align": props.element.align });
+
 	return (
 		<Switch>
 			<Match when={props.element.type === "block-quote"}>

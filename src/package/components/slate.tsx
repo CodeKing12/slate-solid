@@ -1,15 +1,11 @@
 import { JSX, createEffect, createRenderEffect, createSignal, onCleanup, onMount, splitProps } from "solid-js";
-import { BaseSelection, Descendant, Editor, Node, Operation, Scrubber, Selection } from "slate";
+import { Descendant, Editor, Node, Operation, Scrubber } from "slate";
 import { FocusedContext } from "../hooks/use-focused";
-import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
 import { SlateContext, SlateContextValue } from "../hooks/use-slate";
 import { useSelectorContext, SlateSelectorContext } from "../hooks/use-slate-selector";
 import { EditorContext } from "../hooks/use-slate-static";
 import { SolidEditor } from "../plugin/solid-editor";
 import { EDITOR_TO_ON_CHANGE } from "../utils/weak-maps";
-import { SetStoreFunction, Store } from "solid-js/store";
-import { unwrap } from "solid-js/store";
-import { EditorStoreContext } from "../hooks/use-editor-store";
 
 /**
  * A wrapper around the provider to handle `onChange` events, because the editor
@@ -58,7 +54,6 @@ export const Slate = (props: {
 
 	const onContextChange = (options?: { operation?: Operation }) => {
 		setContext((prevContext) => {
-			console.log("Previous Context: ", prevContext);
 			return {
 				v: prevContext.v + 1,
 				editor: split.editor,
@@ -66,17 +61,14 @@ export const Slate = (props: {
 		});
 
 		if (split.onChange) {
-			console.log("Split Change", options);
 			split.onChange(split.editor().children);
 		}
 
 		switch (options?.operation?.type) {
 			case "set_selection":
-				console.log("Selection Change", options);
 				split.onSelectionChange?.(split.editor().selection);
 				break;
 			default:
-				console.log("Value Change");
 				split.onValueChange?.(split.editor().children);
 		}
 
@@ -84,7 +76,6 @@ export const Slate = (props: {
 	};
 
 	createRenderEffect(() => {
-		console.log("Setting onContext Change", split.editor(), onContextChange);
 		EDITOR_TO_ON_CHANGE.set(split.editor(), onContextChange);
 
 		// Beware
@@ -109,10 +100,11 @@ export const Slate = (props: {
 		// Beware eventListeners
 		document.addEventListener("focusin", fn);
 		document.addEventListener("focusout", fn);
-		return () => {
+
+		onCleanup(() => {
 			document.removeEventListener("focusin", fn);
 			document.removeEventListener("focusout", fn);
-		};
+		});
 		// } else {
 		// 	document.addEventListener("focus", fn, true);
 		// 	document.addEventListener("blur", fn, true);

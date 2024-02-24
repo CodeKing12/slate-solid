@@ -37,9 +37,7 @@ export const withSolid = <T extends BaseEditor>(
 
 	// The WeakMap which maps a key to a specific HTMLElement must be scoped to the editor instance to
 	// avoid collisions between editors in the DOM that share the same value.
-	console.log("Setting: ", e);
 	EDITOR_TO_KEY_TO_ELEMENT.set(e, new WeakMap());
-	console.log("Weakmap EDITOR_TO_KEY_TO_ELEMENT", EDITOR_TO_KEY_TO_ELEMENT);
 
 	e.addMark = (key, value) => {
 		EDITOR_TO_SCHEDULE_FLUSH.get(e)?.();
@@ -131,7 +129,6 @@ export const withSolid = <T extends BaseEditor>(
 
 			case "set_selection": {
 				// Selection was manually set, don't restore the user selection after the change.
-				console.log("Setting Selection Change");
 				EDITOR_TO_USER_SELECTION.get(e)?.unref();
 				EDITOR_TO_USER_SELECTION.delete(e);
 				break;
@@ -175,14 +172,12 @@ export const withSolid = <T extends BaseEditor>(
 
 		for (const [path, key] of matches) {
 			const [node] = Editor.node(e, path);
-			console.log("Setting NODE_TO_KEY use-children.tsx 1", node, key);
 			NODE_TO_KEY.set(node, key);
 		}
 
 		for (const [pathRef, key] of pathRefMatches) {
 			if (pathRef.current) {
 				const [node] = Editor.node(e, pathRef.current);
-				console.log("Setting NODE_TO_KEY use-children.tsx 2", node, key);
 				NODE_TO_KEY.set(node, key);
 			}
 		}
@@ -320,10 +315,8 @@ export const withSolid = <T extends BaseEditor>(
 		// (2019/12/03)
 		// https://github.com/facebook/react/issues/14259#issuecomment-439702367
 
-		console.log("Getting onCOntext Change", e);
 		const onContextChange = EDITOR_TO_ON_CHANGE.get(e);
 
-		console.log("Change Occured", options, onContextChange);
 		if (onContextChange) {
 			onContextChange(options);
 		}

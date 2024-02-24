@@ -22,15 +22,12 @@ export interface TextComponentProps {
 const Text = (props: TextComponentProps) => {
 	const editor = useSlateStatic();
 	let ref: HTMLSpanElement | undefined | null;
-	// May convert to functions and <For> loop (or mapArray)
+	// May later convert to functions and <For> loop (or mapArray)
 	const leaves = () => SlateText.decorations(props.text, props.decorations);
 	const key = () => SolidEditor.findKey(editor, props.text);
 	const [children, setChildren] = createSignal<LeafProps[]>([]);
 
-	createEffect((value) => console.log("TextProps updated: ", props, value));
-
 	createRenderEffect(() => {
-		// console.log("LEaves: ", leaves());
 		for (let i = 0; i < leaves().length; i++) {
 			const leaf = leaves()[i];
 
@@ -48,14 +45,12 @@ const Text = (props: TextComponentProps) => {
 				},
 			]);
 		}
-		console.log("Text re-rendered", props.text);
 	});
 
 	// Update element-related weak maps with the DOM element ref.
 	function callbackRef(span: HTMLSpanElement | null) {
 		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
 		if (span) {
-			console.log("Setting Keys of Text .set use-children.tsx", key(), span);
 			KEY_TO_ELEMENT?.set(key(), span);
 			NODE_TO_ELEMENT.set(props.text, span);
 			ELEMENT_TO_NODE.set(span, props.text);

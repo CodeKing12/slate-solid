@@ -15,6 +15,7 @@
 		// "indent": ["error", "tab"],
 		// "linebreak-style": ["error", "windows"],
 		// "quotes": ["error", "double"],
+		"no-mixed-spaces-and-tabs": ["warning", "smart-tabs"],
 		"semi": ["error", "always"],
 		"no-unused-vars": "off",
 		"typescript-eslint/no-unused-vars": "off"

@@ -323,16 +323,12 @@ export const SolidEditor: SolidEditorInterface = {
 
 	findKey: (editor, node) => {
 		let key = NODE_TO_KEY.get(node);
-		// console.log("This is the key: ", key, !key, node);
 
 		if (!key) {
-			console.log("Couldn't find key for: ", node, key, "inside map: ", NODE_TO_KEY);
 			key = new Key();
 			NODE_TO_KEY.set(node, key);
-			console.log("Successfully set key: ", node, key, NODE_TO_KEY);
 		}
 
-		// console.log("NODE_TO_KEY Weakmap", NODE_TO_KEY);
 		return key;
 	},
 
@@ -340,12 +336,11 @@ export const SolidEditor: SolidEditorInterface = {
 		const path: Path = [];
 		let child = node;
 
+		// eslint-disable-next-line no-constant-condition
 		while (true) {
 			const parent = NODE_TO_PARENT.get(child);
-			console.log("FindPath Parent -> Child: ", parent, child);
 
 			if (parent == null) {
-				console.log("parent is null", child);
 				if (isEditor || Editor.isEditor(child)) {
 					return path;
 				} else {
@@ -488,23 +483,13 @@ export const SolidEditor: SolidEditorInterface = {
 	setFragmentData: (editor, data, originEvent) => {
 		if (data) {
 			editor.setFragmentData(data, originEvent);
-		} else {
-			console.log("Doing nothing - Manual");
 		}
 	},
 
 	toDOMNode: (editor, node) => {
 		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
 		const key = SolidEditor.findKey(editor, node);
-		// console.log(
-		// 	"Debugging SolidEditor toDOMNode",
-		// 	node,
-		// 	SolidEditor.findKey(editor, node),
-		// 	key,
-		// 	KEY_TO_ELEMENT,
-		// 	// KEY_TO_ELEMENT?.get({ id: "134" }),
-		// 	KEY_TO_ELEMENT?.get(key)
-		// );
+
 		const domNode = Editor.isEditor(node)
 			? EDITOR_TO_ELEMENT.get(editor)
 			: KEY_TO_ELEMENT?.get(SolidEditor.findKey(editor, node));
@@ -804,13 +789,6 @@ export const SolidEditor: SolidEditorInterface = {
 						lastRange.startContainer instanceof HTMLTableRowElement
 					) {
 						// HTMLElement, becouse Element is a slate element
-						function getLastChildren(element: HTMLElement): HTMLElement {
-							if (element.childElementCount > 0) {
-								return getLastChildren(<HTMLElement>element.children[0]);
-							} else {
-								return element;
-							}
-						}
 
 						const firstNodeRow = <HTMLTableRowElement>firstRange.startContainer;
 						const lastNodeRow = <HTMLTableRowElement>lastRange.startContainer;
@@ -939,3 +917,11 @@ export const SolidEditor: SolidEditorInterface = {
 		return range as unknown as T extends true ? Range | null : Range;
 	},
 };
+
+function getLastChildren(element: HTMLElement): HTMLElement {
+	if (element.childElementCount > 0) {
+		return getLastChildren(<HTMLElement>element.children[0]);
+	} else {
+		return element;
+	}
+}
