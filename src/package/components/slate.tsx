@@ -1,4 +1,4 @@
-import { JSX, createEffect, createSignal, onCleanup, splitProps } from "solid-js";
+import { JSX, createEffect, createRenderEffect, createSignal, onCleanup, onMount, splitProps } from "solid-js";
 import { BaseSelection, Descendant, Editor, Node, Operation, Scrubber, Selection } from "slate";
 import { FocusedContext } from "../hooks/use-focused";
 import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
@@ -7,8 +7,9 @@ import { useSelectorContext, SlateSelectorContext } from "../hooks/use-slate-sel
 import { EditorContext } from "../hooks/use-slate-static";
 import { SolidEditor } from "../plugin/solid-editor";
 import { EDITOR_TO_ON_CHANGE } from "../utils/weak-maps";
-import { SetStoreFunction } from "solid-js/store";
+import { SetStoreFunction, Store } from "solid-js/store";
 import { unwrap } from "solid-js/store";
+import { EditorStoreContext } from "../hooks/use-editor-store";
 
 /**
  * A wrapper around the provider to handle `onChange` events, because the editor
@@ -16,17 +17,15 @@ import { unwrap } from "solid-js/store";
  */
 
 export const Slate = (props: {
-	editor: SolidEditor;
-	setEditor: SetStoreFunction<SolidEditor>;
+	editor: () => SolidEditor;
 	initialValue: Descendant[];
 	children: JSX.Element;
 	onChange?: (value: Descendant[]) => void;
 	onSelectionChange?: (selection?: any) => void;
-	onValueChange?: (value?: Descendant[]) => void;
+	onValueChange?: (value: Descendant[]) => void;
 }) => {
 	const [split, rest] = splitProps(props, [
 		"editor",
-		"setEditor",
 		"children",
 		"onChange",
 		"onSelectionChange",
@@ -43,64 +42,66 @@ export const Slate = (props: {
 				)}`
 			);
 		}
-		if (!Editor.isEditor(split.editor)) {
-			throw new Error(`[Slate] editor is invalid! You passed: ${Scrubber.stringify(split.editor)}`);
+		if (!Editor.isEditor(split.editor())) {
+			throw new Error(`[Slate] editor is invalid! You passed: ${Scrubber.stringify(split.editor())}`);
 		}
-		// split.editor.children = split.initialValue;
-		split.setEditor("children", split.initialValue);
-		split.setEditor(rest);
-		// Object.assign(split.editor, rest);
-		return { v: 0, editor: () => split.editor, setEditor: split.setEditor } as SlateContextValue;
+		split.editor().children = split.initialValue;
+		split.onValueChange?.(split.initialValue);
+		Object.assign(split.editor(), rest);
+		// split.setEditor("children", split.initialValue);
+		// split.setEditor(rest);
+		return { v: 0, editor: split.editor } as SlateContextValue;
 	}
 	const [context, setContext] = createSignal<SlateContextValue>(getInitialContextValue());
 
-	const selectorData = () => useSelectorContext(split.editor);
+	const selectorData = () => useSelectorContext(split.editor());
 
 	const onContextChange = (options?: { operation?: Operation }) => {
+		setContext((prevContext) => {
+			console.log("Previous Context: ", prevContext);
+			return {
+				v: prevContext.v + 1,
+				editor: split.editor,
+			};
+		});
+
 		if (split.onChange) {
 			console.log("Split Change", options);
-			split.onChange(split.editor.children);
+			split.onChange(split.editor().children);
 		}
 
 		switch (options?.operation?.type) {
 			case "set_selection":
 				console.log("Selection Change", options);
-				split.onSelectionChange?.(options.operation?.newProperties);
+				split.onSelectionChange?.(split.editor().selection);
 				break;
 			default:
 				console.log("Value Change");
-				split.onValueChange?.(split.editor.children);
+				split.onValueChange?.(split.editor().children);
 		}
 
-		setContext((prevContext) => {
-			console.log("Previous Context: ", prevContext);
-			return {
-				v: prevContext.v + 1,
-				editor: () => split.editor,
-				setEditor: split.setEditor,
-			};
-		});
-		selectorData()().onChange(split.editor);
+		selectorData()().onChange(split.editor());
 	};
 
-	createEffect(() => {
-		console.log("Setting onContext Change", unwrap(split.editor), onContextChange);
-		EDITOR_TO_ON_CHANGE.set(unwrap(split.editor), onContextChange);
+	createRenderEffect(() => {
+		console.log("Setting onContext Change", split.editor(), onContextChange);
+		EDITOR_TO_ON_CHANGE.set(split.editor(), onContextChange);
 
 		// Beware
 		onCleanup(() => {
-			EDITOR_TO_ON_CHANGE.set(unwrap(split.editor), () => {});
+			EDITOR_TO_ON_CHANGE.set(split.editor(), () => {});
 		});
 	});
 
-	const [isFocused, setIsFocused] = createSignal(SolidEditor.isFocused(split.editor));
+	const [isFocused, setIsFocused] = createSignal(SolidEditor.isFocused(split.editor()));
 
-	// createEffect(() => {
-	// 	setIsFocused(SolidEditor.isFocused(split.editor));
-	// });
+	createEffect(() => {
+		setIsFocused(SolidEditor.isFocused(split.editor()));
+	});
 
-	useIsomorphicLayoutEffect(() => {
-		const fn = () => setIsFocused(SolidEditor.isFocused(split.editor));
+	// Beware useIsomorphicLayoutEffect
+	onMount(() => {
+		const fn = () => setIsFocused(SolidEditor.isFocused(split.editor()));
 		// if (REACT_MAJOR_VERSION >= 17) {
 		// In React >= 17 onFocus and onBlur listen to the focusin and focusout events during the bubbling phase.
 		// Therefore in order for <Editable />'s handlers to run first, which is necessary for ReactEditor.isFocused(editor)
@@ -120,7 +121,7 @@ export const Slate = (props: {
 		// 		document.removeEventListener("blur", fn, true);
 		// 	};
 		// }
-	}, []);
+	});
 
 	const getSelectorContext = () => selectorData()().selectorContext();
 

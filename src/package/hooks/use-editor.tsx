@@ -14,6 +14,6 @@ export const useEditor = () => {
 		throw new Error(`The \`useEditor\` hook must be used inside the <Slate> component's context.`);
 	}
 
-	return editor;
+	return editor().editor();
 };
 

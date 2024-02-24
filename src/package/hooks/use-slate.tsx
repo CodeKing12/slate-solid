@@ -11,7 +11,6 @@ import { SetStoreFunction } from "solid-js/store";
 export interface SlateContextValue {
 	v: number;
 	editor: () => SolidEditor;
-	setEditor: SetStoreFunction<SolidEditor>;
 }
 
 export const SlateContext = createContext<Accessor<SlateContextValue> | null>(null);
@@ -20,7 +19,7 @@ export const SlateContext = createContext<Accessor<SlateContextValue> | null>(nu
  * Get the current editor object from the React context.
  */
 
-export type useSlateResponse = [editor: SolidEditor, setEditor: SetStoreFunction<SolidEditor>];
+export type useSlateResponse = SolidEditor;
 
 // Beware
 export const useSlate = (): useSlateResponse => {
@@ -30,7 +29,7 @@ export const useSlate = (): useSlateResponse => {
 		throw new Error(`The \`useSlate\` hook must be used inside the <Slate> component's context.`);
 	}
 
-	return [context().editor(), context().setEditor];
+	return context().editor();
 };
 
 export const useSlateWithV = () => {

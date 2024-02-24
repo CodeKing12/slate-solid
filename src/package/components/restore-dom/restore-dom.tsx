@@ -31,8 +31,8 @@ const RestoreDOMComponent = (props: RestoreDOMProps): JSXElement => {
 
 	// Similar to componentDidMount
 	onMount(() => {
-		if (editorContext().editor()) {
-			const newManager = createRestoreDomManager(editorContext().editor(), props.receivedUserInput);
+		if (editorContext().editor) {
+			const newManager = createRestoreDomManager(editorContext().editor, props.receivedUserInput);
 			setManager(() => newManager);
 			const newMutationObserver = new MutationObserver(newManager.registerMutations);
 			setMutationObserver(() => newMutationObserver);

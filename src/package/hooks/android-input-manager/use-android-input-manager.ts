@@ -30,14 +30,14 @@ export const useAndroidInputManager = !IS_ANDROID
 
 			const [inputManager] = createSignal(
 				createAndroidInputManager({
-					editor: editor(),
+					editor: editor,
 					...options,
 				})
 			);
 
 			useMutationObserver(split.node, inputManager().handleDomMutations, MUTATION_OBSERVER_CONFIG);
 
-			EDITOR_TO_SCHEDULE_FLUSH.set(unwrap(editor()), inputManager().scheduleFlush);
+			EDITOR_TO_SCHEDULE_FLUSH.set(editor, inputManager().scheduleFlush);
 			if (isMounted) {
 				inputManager().flush();
 			}

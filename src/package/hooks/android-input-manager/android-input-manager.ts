@@ -75,8 +75,8 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	let insertPositionHint: StringDiff | null | false = false;
 
 	const applyPendingSelection = () => {
-		const pendingSelection = EDITOR_TO_PENDING_SELECTION.get(unwrap(props.editor));
-		EDITOR_TO_PENDING_SELECTION.delete(unwrap(props.editor));
+		const pendingSelection = EDITOR_TO_PENDING_SELECTION.get(props.editor);
+		EDITOR_TO_PENDING_SELECTION.delete(props.editor);
 
 		if (pendingSelection) {
 			const { selection } = props.editor;
@@ -91,8 +91,8 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	};
 
 	const performAction = () => {
-		const action = EDITOR_TO_PENDING_ACTION.get(unwrap(props.editor));
-		EDITOR_TO_PENDING_ACTION.delete(unwrap(props.editor));
+		const action = EDITOR_TO_PENDING_ACTION.get(props.editor);
+		EDITOR_TO_PENDING_ACTION.delete(props.editor);
 		if (!action) {
 			return;
 		}
@@ -142,22 +142,18 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 
 		const selectionRef =
 			props.editor.selection && Editor.rangeRef(props.editor, props.editor.selection, { affinity: "forward" });
-		EDITOR_TO_USER_MARKS.set(unwrap(props.editor), props.editor.marks);
+		EDITOR_TO_USER_MARKS.set(props.editor, props.editor.marks);
 
-		debug(
-			"flush",
-			EDITOR_TO_PENDING_ACTION.get(unwrap(props.editor)),
-			EDITOR_TO_PENDING_DIFFS.get(unwrap(props.editor))
-		);
+		debug("flush", EDITOR_TO_PENDING_ACTION.get(props.editor), EDITOR_TO_PENDING_DIFFS.get(props.editor));
 
 		let scheduleSelectionChange = hasPendingDiffs();
 
 		let diff: TextDiff | undefined;
-		while ((diff = EDITOR_TO_PENDING_DIFFS.get(unwrap(props.editor))?.[0])) {
-			const pendingMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(unwrap(props.editor));
+		while ((diff = EDITOR_TO_PENDING_DIFFS.get(props.editor)?.[0])) {
+			const pendingMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(props.editor);
 
 			if (pendingMarks !== undefined) {
-				EDITOR_TO_PENDING_INSERTION_MARKS.delete(unwrap(props.editor));
+				EDITOR_TO_PENDING_INSERTION_MARKS.delete(props.editor);
 				props.editor.marks = pendingMarks;
 			}
 
@@ -181,19 +177,19 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 			// pending ranges.
 			EDITOR_TO_PENDING_DIFFS.set(
 				props.editor,
-				EDITOR_TO_PENDING_DIFFS.get(unwrap(props.editor))?.filter(({ id }) => id !== diff!.id)!
+				EDITOR_TO_PENDING_DIFFS.get(props.editor)?.filter(({ id }) => id !== diff!.id)!
 			);
 
 			if (!verifyDiffState(props.editor, diff)) {
 				debug("invalid diff state");
 				scheduleSelectionChange = false;
-				EDITOR_TO_PENDING_ACTION.delete(unwrap(props.editor));
-				EDITOR_TO_USER_MARKS.delete(unwrap(props.editor));
+				EDITOR_TO_PENDING_ACTION.delete(props.editor);
+				EDITOR_TO_USER_MARKS.delete(props.editor);
 				flushing = "action";
 
 				// Ensure we don't restore the pending user (dom) selection
 				// since the document and dom state do not match.
-				EDITOR_TO_PENDING_SELECTION.delete(unwrap(props.editor));
+				EDITOR_TO_PENDING_SELECTION.delete(props.editor);
 				props.scheduleOnDOMSelectionChange.cancel();
 				props.onDOMSelectionChange.cancel();
 				selectionRef?.unref();
@@ -203,7 +199,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 		const selection = selectionRef?.unref();
 		if (
 			selection &&
-			!EDITOR_TO_PENDING_SELECTION.get(unwrap(props.editor)) &&
+			!EDITOR_TO_PENDING_SELECTION.get(props.editor) &&
 			(!props.editor.selection || !Range.equals(selection, props.editor.selection))
 		) {
 			Transforms.select(props.editor, selection);
@@ -227,8 +223,8 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 
 		applyPendingSelection();
 
-		const userMarks = EDITOR_TO_USER_MARKS.get(unwrap(props.editor));
-		EDITOR_TO_USER_MARKS.delete(unwrap(props.editor));
+		const userMarks = EDITOR_TO_USER_MARKS.get(props.editor);
+		EDITOR_TO_USER_MARKS.delete(props.editor);
 		if (userMarks !== undefined) {
 			props.editor.marks = userMarks;
 			props.editor.onChange();
@@ -241,7 +237,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 		}
 
 		compositionEndTimeoutId = setTimeout(() => {
-			IS_COMPOSING.set(unwrap(props.editor), false);
+			IS_COMPOSING.set(props.editor, false);
 			flush();
 		}, RESOLVE_DELAY);
 	};
@@ -249,7 +245,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	const handleCompositionStart = (_event: CompositionEvent) => {
 		debug("composition start");
 
-		IS_COMPOSING.set(unwrap(props.editor), true);
+		IS_COMPOSING.set(props.editor, true);
 
 		if (compositionEndTimeoutId) {
 			clearTimeout(compositionEndTimeoutId);
@@ -258,7 +254,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	};
 
 	const updatePlaceholderVisibility = (forceHide = false) => {
-		const placeholderElement = EDITOR_TO_PLACEHOLDER_ELEMENT.get(unwrap(props.editor));
+		const placeholderElement = EDITOR_TO_PLACEHOLDER_ELEMENT.get(props.editor);
 		if (!placeholderElement) {
 			return;
 		}
@@ -274,8 +270,8 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	const storeDiff = (path: Path, diff: StringDiff) => {
 		debug("storeDiff", path, diff);
 
-		const pendingDiffs = EDITOR_TO_PENDING_DIFFS.get(unwrap(props.editor)) ?? [];
-		EDITOR_TO_PENDING_DIFFS.set(unwrap(props.editor), pendingDiffs);
+		const pendingDiffs = EDITOR_TO_PENDING_DIFFS.get(props.editor) ?? [];
+		EDITOR_TO_PENDING_DIFFS.set(props.editor, pendingDiffs);
 
 		const target = Node.leaf(props.editor, path);
 		const idx = pendingDiffs.findIndex((change) => Path.equals(change.path, path));
@@ -306,7 +302,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 		insertPositionHint = false;
 		debug("scheduleAction", { at, run });
 
-		EDITOR_TO_PENDING_SELECTION.delete(unwrap(props.editor));
+		EDITOR_TO_PENDING_SELECTION.delete(props.editor);
 		props.scheduleOnDOMSelectionChange.cancel();
 		props.onDOMSelectionChange.cancel();
 
@@ -314,7 +310,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 			flush();
 		}
 
-		EDITOR_TO_PENDING_ACTION.set(unwrap(props.editor), { at, run });
+		EDITOR_TO_PENDING_ACTION.set(props.editor, { at, run });
 
 		// COMPAT: When deleting before a non-contenteditable element chrome only fires a beforeinput,
 		// (no input) and doesn't perform any dom mutations. Without a flush timeout we would never flush
@@ -393,7 +389,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 				start: start.offset,
 				end: end.offset,
 			};
-			const pendingDiffs = EDITOR_TO_PENDING_DIFFS.get(unwrap(props.editor));
+			const pendingDiffs = EDITOR_TO_PENDING_DIFFS.get(props.editor);
 			const relevantPendingDiffs = pendingDiffs?.find((change) => Path.equals(change.path, path));
 			const diffs = relevantPendingDiffs ? [relevantPendingDiffs.diff, diff] : [diff];
 			const text = applyStringDiff(leaf.text, ...diffs);
@@ -539,7 +535,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 
 				// COMPAT: If we are writing inside a placeholder, the ime inserts the text inside
 				// the placeholder itself and thus includes the zero-width space inside edit events.
-				if (EDITOR_TO_PENDING_INSERTION_MARKS.get(unwrap(props.editor))) {
+				if (EDITOR_TO_PENDING_INSERTION_MARKS.get(props.editor)) {
 					text = text.replace("\uFEFF", "");
 				}
 
@@ -634,11 +630,11 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	};
 
 	const hasPendingAction = () => {
-		return !!EDITOR_TO_PENDING_ACTION.get(unwrap(props.editor));
+		return !!EDITOR_TO_PENDING_ACTION.get(props.editor);
 	};
 
 	const hasPendingDiffs = () => {
-		return !!EDITOR_TO_PENDING_DIFFS.get(unwrap(props.editor))?.length;
+		return !!EDITOR_TO_PENDING_DIFFS.get(props.editor)?.length;
 	};
 
 	const hasPendingChanges = () => {
@@ -650,7 +646,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 	};
 
 	const handleUserSelect = (range: Range | null) => {
-		EDITOR_TO_PENDING_SELECTION.set(unwrap(props.editor), range);
+		EDITOR_TO_PENDING_SELECTION.set(props.editor, range);
 
 		if (flushTimeoutId) {
 			clearTimeout(flushTimeoutId);
@@ -708,7 +704,7 @@ export function createAndroidInputManager(props: CreateAndroidInputManagerOption
 		if (mutations.some((mutation) => isTrackedMutation(props.editor, mutation, mutations))) {
 			// Cause a re-render to restore the dom state if we encounter tracked mutations without
 			// a corresponding pending action.
-			EDITOR_TO_FORCE_RENDER.get(unwrap(props.editor))?.();
+			EDITOR_TO_FORCE_RENDER.get(props.editor)?.();
 		}
 	};
 

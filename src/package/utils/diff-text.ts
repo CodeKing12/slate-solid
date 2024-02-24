@@ -24,7 +24,7 @@ export function verifyDiffState(editor: Editor, textDiff: TextDiff): boolean {
 		return false;
 	}
 
-	const node = Node.get(unwrap(editor), path);
+	const node = Node.get(editor, path);
 	if (!Text.isText(node)) {
 		return false;
 	}
@@ -38,7 +38,7 @@ export function verifyDiffState(editor: Editor, textDiff: TextDiff): boolean {
 		return false;
 	}
 
-	const nextNode = Node.get(unwrap(editor), nextPath);
+	const nextNode = Node.get(editor, nextPath);
 	return Text.isText(nextNode) && nextNode.text.startsWith(diff.text);
 }
 
@@ -136,7 +136,7 @@ export function normalizePoint(editor: Editor, point: Point): Point | null {
 		return null;
 	}
 
-	let leaf = Node.get(unwrap(editor), path);
+	let leaf = Node.get(editor, path);
 	if (!Text.isText(leaf)) {
 		return null;
 	}
@@ -186,7 +186,7 @@ export function normalizeRange(editor: Editor, range: Range): Range | null {
 }
 
 export function transformPendingPoint(editor: Editor, point: Point, op: Operation): Point | null {
-	const pendingDiffs = EDITOR_TO_PENDING_DIFFS.get(unwrap(editor));
+	const pendingDiffs = EDITOR_TO_PENDING_DIFFS.get(editor);
 	const textDiff = pendingDiffs?.find(({ path }) => Path.equals(path, point.path));
 
 	if (!textDiff || point.offset <= textDiff.diff.start) {

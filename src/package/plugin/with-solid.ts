@@ -17,6 +17,7 @@ import {
 } from "../utils/weak-maps";
 import { SolidEditor } from "./solid-editor";
 import { unwrap } from "solid-js/store";
+import { cloneDeep } from "lodash";
 
 /**
  * `withReact` adds React and DOM specific behaviors to the editor.
@@ -161,7 +162,7 @@ export const withSolid = <T extends BaseEditor>(
 					changedPath = op.path;
 				}
 
-				const changedNode = Node.get(unwrap(editor), Path.parent(changedPath));
+				const changedNode = Node.get(editor, Path.parent(changedPath));
 				const changedNodeKey = SolidEditor.findKey(e, changedNode);
 				const changedPathRef = Editor.pathRef(e, Path.parent(changedPath));
 				pathRefMatches.push([changedPathRef, changedNodeKey]);
@@ -174,12 +175,14 @@ export const withSolid = <T extends BaseEditor>(
 
 		for (const [path, key] of matches) {
 			const [node] = Editor.node(e, path);
+			console.log("Setting NODE_TO_KEY use-children.tsx 1", node, key);
 			NODE_TO_KEY.set(node, key);
 		}
 
 		for (const [pathRef, key] of pathRefMatches) {
 			if (pathRef.current) {
 				const [node] = Editor.node(e, pathRef.current);
+				console.log("Setting NODE_TO_KEY use-children.tsx 2", node, key);
 				NODE_TO_KEY.set(node, key);
 			}
 		}

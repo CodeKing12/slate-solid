@@ -1,14 +1,14 @@
-import { createEffect } from "solid-js";
+import { onMount } from "solid-js";
 
 export function useIsMounted() {
 	let isMountedRef = false;
 
-	createEffect(() => {
+	onMount(() => {
 		isMountedRef = true;
 		return () => {
 			isMountedRef = false;
 		};
-	}, []);
+	});
 
 	return isMountedRef;
 }

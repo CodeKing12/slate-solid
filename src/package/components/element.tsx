@@ -28,6 +28,7 @@ import { unwrap } from "solid-js/store";
 export interface ElementComponentProps {
 	decorations: Range[];
 	element: SlateElement;
+	reactive: any;
 	renderElement?: (props: RenderElementProps) => JSX.Element;
 	renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element;
 	renderLeaf?: (props: RenderLeafProps) => JSX.Element;
@@ -44,11 +45,11 @@ const Element = (props: ElementComponentProps) => {
 	// console.log("Came this far part 2");
 	const editor = useSlateStatic();
 	const readOnly = useReadOnly();
-	const isInline = () => editor().isInline(merge.element);
-	const key = () => SolidEditor.findKey(editor(), merge.element);
+	const isInline = () => editor.isInline(merge.element);
+	const key = () => SolidEditor.findKey(editor, merge.element);
 	const ref = (ref: HTMLElement | null) => {
 		// Update element-related weak maps with the DOM element ref.
-		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor()));
+		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor));
 		console.log("Key, Debugging .set: ", key(), ref, KEY_TO_ELEMENT);
 		if (ref) {
 			console.log("Setting Keys of Element");
@@ -74,6 +75,7 @@ const Element = (props: ElementComponentProps) => {
 		<Children
 			decorations={merge.decorations}
 			node={merge.element}
+			reactive={props.reactive}
 			renderElement={merge.renderElement}
 			renderPlaceholder={merge.renderPlaceholder}
 			renderLeaf={merge.renderLeaf}
@@ -104,7 +106,7 @@ const Element = (props: ElementComponentProps) => {
 			attributes["data-slate-inline"] = true;
 		}
 
-		if (!isInline() && Editor.hasInlines(editor(), merge.element)) {
+		if (!isInline() && Editor.hasInlines(editor, merge.element)) {
 			const text = Node.string(merge.element);
 			const dir = getDirection(text);
 
@@ -116,7 +118,7 @@ const Element = (props: ElementComponentProps) => {
 
 	// If it's a void node, wrap the children in extra void-specific elements.
 	createRenderEffect(() => {
-		if (Editor.isVoid(editor(), merge.element)) {
+		if (Editor.isVoid(editor, merge.element)) {
 			attributes["data-slate-void"] = true;
 
 			if (!readOnly && isInline()) {
@@ -177,7 +179,7 @@ const Element = (props: ElementComponentProps) => {
 
 export const DefaultElement = (props: RenderElementProps) => {
 	const editor = useSlateStatic();
-	const tag = () => (editor().isInline(props.element) ? "span" : "div");
+	const tag = () => (editor.isInline(props.element) ? "span" : "div");
 
 	return (
 		<Dynamic component={tag()} {...props.attributes} style={{ position: "relative" }}>
@@ -187,4 +189,3 @@ export const DefaultElement = (props: RenderElementProps) => {
 };
 
 export default Element;
-

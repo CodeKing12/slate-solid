@@ -1,4 +1,4 @@
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, on } from "solid-js";
 import { useIsomorphicLayoutEffect } from "./use-isomorphic-layout-effect";
 
 export function useMutationObserver(
@@ -14,13 +14,15 @@ export function useMutationObserver(
 		mutationObserver().takeRecords();
 	});
 
-	createEffect(() => {
-		if (!node) {
-			throw new Error("Failed to attach MutationObserver, `node` is undefined");
-		}
+	createEffect(
+		on([mutationObserver, () => node, () => options], () => {
+			if (!node) {
+				throw new Error("Failed to attach MutationObserver, `node` is undefined");
+			}
 
-		mutationObserver().observe(node, options);
-		return () => mutationObserver().disconnect();
-	}, [mutationObserver, node, options]);
+			mutationObserver().observe(node, options);
+			return () => mutationObserver().disconnect();
+		})
+	);
 }
 

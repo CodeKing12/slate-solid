@@ -1,4 +1,4 @@
-import { createSignal, createEffect, JSX, mergeProps, createRenderEffect } from "solid-js";
+import { createSignal, createEffect, JSX, mergeProps, createRenderEffect, on, onCleanup } from "solid-js";
 import { Element, Text } from "slate";
 import { ResizeObserver as ResizeObserverPolyfill } from "@juggle/resize-observer";
 import String from "./string";
@@ -63,10 +63,10 @@ const Leaf = (props: LeafProps) => {
 		disconnectPlaceholderResizeObserver(placeholderResizeObserver, placeholderEl == null);
 
 		if (placeholderEl == null) {
-			EDITOR_TO_PLACEHOLDER_ELEMENT.delete(unwrap(editor()));
+			EDITOR_TO_PLACEHOLDER_ELEMENT.delete(editor);
 			merge.leaf.onPlaceholderResize?.(null);
 		} else {
-			EDITOR_TO_PLACEHOLDER_ELEMENT.set(unwrap(editor()), placeholderEl);
+			EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor, placeholderEl);
 
 			if (!placeholderResizeObserver) {
 				// Create a new observer and observe the placeholder element.
@@ -84,21 +84,23 @@ const Leaf = (props: LeafProps) => {
 	let children = <String isLast={merge.isLast} leaf={merge.leaf} parent={merge.parent} text={merge.text} />;
 
 	const leafIsPlaceholder = () => Boolean(merge.leaf[PLACEHOLDER_SYMBOL]);
-	createEffect(() => {
-		if (leafIsPlaceholder()) {
-			if (!showPlaceholderTimeoutRef) {
-				// Delay the placeholder, so it will not render in a selection
-				showPlaceholderTimeoutRef = setTimeout(() => {
-					setShowPlaceholder(true);
-					showPlaceholderTimeoutRef = null;
-				}, PLACEHOLDER_DELAY);
+	createEffect(
+		on([leafIsPlaceholder], () => {
+			if (leafIsPlaceholder()) {
+				if (!showPlaceholderTimeoutRef) {
+					// Delay the placeholder, so it will not render in a selection
+					showPlaceholderTimeoutRef = setTimeout(() => {
+						setShowPlaceholder(true);
+						showPlaceholderTimeoutRef = null;
+					}, PLACEHOLDER_DELAY);
+				}
+			} else {
+				clearTimeoutRef(showPlaceholderTimeoutRef);
+				setShowPlaceholder(false);
 			}
-		} else {
-			clearTimeoutRef(showPlaceholderTimeoutRef);
-			setShowPlaceholder(false);
-		}
-		return () => clearTimeoutRef(showPlaceholderTimeoutRef);
-	});
+			onCleanup(() => clearTimeoutRef(showPlaceholderTimeoutRef));
+		})
+	);
 
 	createRenderEffect(() => {
 		if (leafIsPlaceholder() && showPlaceholder()) {

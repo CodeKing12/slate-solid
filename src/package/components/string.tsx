@@ -1,4 +1,4 @@
-import { createRenderEffect, createSignal, mergeProps } from "solid-js";
+import { Match, Switch, createRenderEffect, createSignal, mergeProps } from "solid-js";
 import { Editor, Text, Path, Element, Node } from "slate";
 
 // index index-fix
@@ -14,53 +14,76 @@ import { MARK_PLACEHOLDER_SYMBOL } from "../utils/weak-maps";
 
 const String = (props: { isLast: boolean; leaf: Text; parent: Element; text: Text }) => {
 	const editor = useSlateStatic();
-	const path = () => SolidEditor.findPath(editor(), props.text);
+	const path = () => SolidEditor.findPath(editor, props.text);
 	const parentPath = () => Path.parent(path());
 	const isMarkPlaceholder = () => Boolean(props.leaf[MARK_PLACEHOLDER_SYMBOL]);
+
+	const isLastNodeInEmptyBlock = () =>
+		props.leaf.text === "" &&
+		props.parent.children[props.parent.children.length - 1] === props.text &&
+		!editor.isInline(props.parent) &&
+		Editor.string(editor, parentPath()) === "";
 
 	let jsx = <TextString text={props.leaf.text} />;
 	console.log("Running text effects");
 
 	// COMPAT: Render text inside void nodes with a zero-width space.
 	// So the node can contain selection but the text is not visible.
-	createRenderEffect(() => {
-		if (editor().isVoid(props.parent)) {
-			jsx = <ZeroWidthString length={Node.string(props.parent).length} />;
-		}
-	});
+	// createRenderEffect(() => {
+	// 	if (editor.isVoid(props.parent)) {
+	// 		jsx = <ZeroWidthString length={Node.string(props.parent).length} />;
+	// 	}
+	// });
 
 	// COMPAT: If this is the last text node in an empty block, render a zero-
 	// width space that will convert into a line break when copying and pasting
 	// to support expected plain text.
-	createRenderEffect(() => {
-		if (
-			props.leaf.text === "" &&
-			props.parent.children[props.parent.children.length - 1] === props.text &&
-			!editor().isInline(props.parent) &&
-			Editor.string(editor(), parentPath()) === ""
-		) {
-			jsx = <ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder()} />;
-		}
-	});
+	// createRenderEffect(() => {
+	// 	if (
+	// 		props.leaf.text === "" &&
+	// 		props.parent.children[props.parent.children.length - 1] === props.text &&
+	// 		!editor.isInline(props.parent) &&
+	// 		Editor.string(editor, parentPath()) === ""
+	// 	) {
+	// 		jsx = <ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder()} />;
+	// 	}
+	// });
 
 	// COMPAT: If the text is empty, it's because it's on the edge of an inline
 	// node, so we render a zero-width space so that the selection can be
 	// inserted next to it still.
-	createRenderEffect(() => {
-		if (props.leaf.text === "") {
-			jsx = <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />;
-		}
-	});
+	// createRenderEffect(() => {
+	// 	if (props.leaf.text === "") {
+	// 		jsx = <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />;
+	// 	}
+	// });
 
 	// COMPAT: Browsers will collapse trailing new lines at the end of blocks,
 	// so we need to add an extra trailing new lines to prevent that.
-	createRenderEffect(() => {
-		if (props.isLast && props.leaf.text.slice(-1) === "\n") {
-			jsx = <TextString isTrailing text={props.leaf.text} />;
-		}
-	});
+	// createRenderEffect(() => {
+	// 	if (props.isLast && props.leaf.text.slice(-1) === "\n") {
+	// 		jsx = <TextString isTrailing text={props.leaf.text} />;
+	// 	}
+	// });
 
-	return jsx;
+	return (
+		<>
+			<Switch fallback={<TextString text={props.leaf.text} />}>
+				<Match when={editor.isVoid(props.parent)}>
+					<ZeroWidthString length={Node.string(props.parent).length} />
+				</Match>
+				<Match when={isLastNodeInEmptyBlock()}>
+					<ZeroWidthString isLineBreak isMarkPlaceholder={isMarkPlaceholder()} />
+				</Match>
+				<Match when={props.leaf.text === ""}>
+					<ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />
+				</Match>
+				<Match when={props.isLast && props.leaf.text.slice(-1) === "\n"}>
+					<TextString isTrailing text={props.leaf.text} />
+				</Match>
+			</Switch>
+		</>
+	);
 };
 
 /**
@@ -152,7 +175,7 @@ export const ZeroWidthString = (props: { length?: number; isLineBreak?: boolean;
 	});
 
 	return (
-		<span {...attributes}>
+		<span {...attributes()}>
 			{!IS_ANDROID || !merge.isLineBreak ? "\uFEFF" : null}
 			{merge.isLineBreak ? <br /> : null}
 		</span>

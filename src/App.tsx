@@ -14,35 +14,30 @@ const HOTKEYS = {
 
 const LIST_TYPES = ["numbered-list", "bulleted-list"];
 const TEXT_ALIGN_TYPES = ["left", "center", "right", "justify"];
+export type EditorStoreObj = {
+	children: Descendant[];
+	selection: BaseSelection | null;
+	version: number;
+};
 
 const App = () => {
 	const renderElement = (props: any) => <Element {...props} />;
 	const renderLeaf = (props: any) => <Leaf {...props} />;
-	const staticEditor = createMemo(() => withSolid(createEditor()));
-	const [editor, setEditor] = createStore(staticEditor());
+	const editor = createMemo(() => withSolid(createEditor()));
+	const [store, setStore] = createStore<EditorStoreObj>({ children: [], selection: null, version: 0 });
+	// const [signal, setSignal] = createSignal<EditorStoreObj>({ children: [] });
 
 	// console.log("Just created", editor);
 
-	createEffect(() => console.log("Selection changed effect", editor.selection));
-	createEffect(() => console.log("Children Changed effect", editor.children));
+	// createEffect(() => console.log("Selection changed effect", editor.selection));
+	createEffect(() => console.log("Children Changed effect", store.children));
+	const randLetters = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
 
-	function testFunc() {
-		console.log("This is the editor: ", editor, unwrap(editor), unwrap(unwrap(editor)));
-		// setEditor("selection", {
-		// 	anchor: {
-		// 		path: [3, 0],
-		// 		offset: 24,
-		// 	},
-		// 	focus: {
-		// 		path: [3, 0],
-		// 		offset: 24,
-		// 	},
-		// });
-	}
+	// function onEditorChange(children: Descendant[]) {
+	// 	setEditor("children", children);
+	// }
 
-	function onEditorChange(children: Descendant[]) {
-		setEditor("children", children);
-	}
+	function testFunc() {}
 
 	function onEditorSelectionChange(selection?: BaseSelection) {
 		console.log("Running onEditorSelectionChange", selection);
@@ -50,55 +45,46 @@ const App = () => {
 			console.log("No Selection changes");
 			return;
 		}
-		console.log(
-			"New selection",
-			selection
-			// ?? {
-			// 	anchor: {
-			// 		path: [Math.round((Math.random() * 10) / 3), 0],
-			// 		offset: Math.round(Math.random() * 10),
-			// 	},
-			// 	focus: {
-			// 		path: [Math.round((Math.random() * 10) / 3), 0],
-			// 		offset: Math.round(Math.random() * 10),
-			// 	},
-			// }
-		);
-		// setEditor((prev) => ({ ...prev, selection }));
-		setEditor("selection", (prev) => ({ ...prev, ...selection }));
-		// setEditor("selection", "anchor", "path", selection.anchor.path);
-		// setEditor("selection", "anchor", "offset", selection.anchor.offset);
-		// setEditor("selection", "focus", "path", selection.focus.path);
-		// setEditor("selection", "focus", "offset", selection.focus.offset);
-		console.log(editor);
+		console.log("New selection - No setEditor()", selection);
+		setStore("selection", selection);
+		setStore("version", (prev) => (prev += 1));
+	}
+
+	function onEditorChange(children: Descendant[]) {
+		console.log("Editor Children Updated/Changed", children, editor());
+		setStore("children", children);
+		setStore("version", (prev) => (prev += 1));
 	}
 
 	return (
 		<Slate
 			editor={editor}
-			setEditor={setEditor}
+			reactive={store.version}
+			// editorStore={editor}
+			// setEditor={setEditor}
 			initialValue={initialValue}
-			onChange={onEditorChange}
+			onValueChange={onEditorChange}
 			onSelectionChange={onEditorSelectionChange}
 		>
 			<Toolbar>
-				<MarkButton format="bold" icon="format_bold" />
-				<MarkButton format="italic" icon="format_italic" />
-				<MarkButton format="underline" icon="format_underlined" />
-				<MarkButton format="code" icon="code" />
-				<BlockButton format="heading-one" icon="looks_one" />
-				<BlockButton format="heading-two" icon="looks_two" />
-				<BlockButton format="block-quote" icon="format_quote" />
-				<BlockButton format="numbered-list" icon="format_list_numbered" />
-				<BlockButton format="bulleted-list" icon="format_list_bulleted" />
-				<BlockButton format="left" icon="format_align_left" />
-				<BlockButton format="center" icon="format_align_center" />
-				<BlockButton format="right" icon="format_align_right" />
-				<BlockButton format="justify" icon="format_align_justify" />
+				<MarkButton subscribe={store.version} format="bold" icon="format_bold" />
+				<MarkButton subscribe={store.version} format="italic" icon="format_italic" />
+				<MarkButton subscribe={store.version} format="underline" icon="format_underlined" />
+				<MarkButton subscribe={store.version} format="code" icon="code" />
+				<BlockButton subscribe={store.version} format="heading-one" icon="looks_one" />
+				<BlockButton subscribe={store.version} format="heading-two" icon="looks_two" />
+				<BlockButton subscribe={store.version} format="block-quote" icon="format_quote" />
+				<BlockButton subscribe={store.version} format="numbered-list" icon="format_list_numbered" />
+				<BlockButton subscribe={store.version} format="bulleted-list" icon="format_list_bulleted" />
+				<BlockButton subscribe={store.version} format="left" icon="format_align_left" />
+				<BlockButton subscribe={store.version} format="center" icon="format_align_center" />
+				<BlockButton subscribe={store.version} format="right" icon="format_align_right" />
+				<BlockButton subscribe={store.version} format="justify" icon="format_align_justify" />
 			</Toolbar>
 			<Editable
 				renderElement={renderElement}
 				renderLeaf={renderLeaf}
+				reactive={store}
 				placeholder="Enter some rich text…"
 				spellcheck
 				autofocus
@@ -107,7 +93,7 @@ const App = () => {
 						if (isHotkey(hotkey, event as any)) {
 							event.preventDefault();
 							const mark = HOTKEYS[hotkey];
-							toggleMark(editor, mark);
+							toggleMark(editor(), mark);
 						}
 					}
 				}}
@@ -118,7 +104,7 @@ const App = () => {
 };
 
 const toggleBlock = (editor: SolidEditor, format: any) => {
-	const isActive = isBlockActive(editor, format, TEXT_ALIGN_TYPES.includes(format) ? "align" : "type");
+	const isActive = isBlockActive(editor, null, format, TEXT_ALIGN_TYPES.includes(format) ? "align" : "type");
 	const isList = LIST_TYPES.includes(format);
 
 	Transforms.unwrapNodes(editor, {
@@ -148,7 +134,7 @@ const toggleBlock = (editor: SolidEditor, format: any) => {
 };
 
 const toggleMark = (editor: any, format: any) => {
-	const isActive = isMarkActive(editor, format);
+	const isActive = isMarkActive(editor, null, format);
 
 	if (isActive) {
 		Editor.removeMark(editor, format);
@@ -157,7 +143,7 @@ const toggleMark = (editor: any, format: any) => {
 	}
 };
 
-const isBlockActive = (editor: SolidEditor, format: any, blockType = "type") => {
+const isBlockActive = (editor: SolidEditor, reactive: number | null, format: any, blockType = "type") => {
 	if (!editor.selection) return false;
 
 	const [match] = Array.from(
@@ -170,7 +156,7 @@ const isBlockActive = (editor: SolidEditor, format: any, blockType = "type") => 
 	return !!match;
 };
 
-const isMarkActive = (editor: SolidEditor, format: any) => {
+const isMarkActive = (editor: SolidEditor, reactive: number | null, format: any) => {
 	const marks = Editor.marks(editor);
 	return marks ? marks[format] === true : false;
 };
@@ -219,34 +205,37 @@ const Element = (props: { attributes: any; children: any; element: any }) => {
 };
 
 const Leaf = (props: { attributes: any; children: any; leaf: any }) => {
-	let [children, setChildren] = createSignal(props.children);
-
-	createRenderEffect(() => {
-		if (props.leaf.bold) {
-			setChildren(<strong>{props.children}</strong>);
-		}
-
-		if (props.leaf.code) {
-			setChildren(<code>{props.children}</code>);
-		}
-
-		if (props.leaf.italic) {
-			setChildren(<em>{props.children}</em>);
-		}
-
-		if (props.leaf.underline) {
-			setChildren(<u>{props.children}</u>);
-		}
-	});
-
-	return <span {...props.attributes}>{children()}</span>;
+	return (
+		<span {...props.attributes}>
+			<Switch fallback={props.children}>
+				<Match when={props.leaf.bold}>
+					<strong>{props.children}</strong>
+				</Match>
+				<Match when={props.leaf.code}>
+					<code>{props.children}</code>
+				</Match>
+				<Match when={props.leaf.italic}>
+					<em>{props.children}</em>
+				</Match>
+				<Match when={props.leaf.underline}>
+					<u>{props.children}</u>
+				</Match>
+			</Switch>
+		</span>
+	);
 };
 
-const BlockButton = (props: { format: any; icon: any }) => {
-	const [editor] = useSlate();
+const BlockButton = (props: { format: any; icon: any; subscribe: number }) => {
+	const editor = useSlate();
+
 	return (
 		<Button
-			active={isBlockActive(editor, props.format, TEXT_ALIGN_TYPES.includes(props.format) ? "align" : "type")}
+			active={isBlockActive(
+				editor,
+				props.subscribe,
+				props.format,
+				TEXT_ALIGN_TYPES.includes(props.format) ? "align" : "type"
+			)}
 			onMouseDown={(event: MouseEvent) => {
 				event.preventDefault();
 				toggleBlock(editor, props.format);
@@ -257,11 +246,12 @@ const BlockButton = (props: { format: any; icon: any }) => {
 	);
 };
 
-const MarkButton = (props: { format: any; icon: any }) => {
-	const [editor] = useSlate();
+const MarkButton = (props: { format: any; icon: any; subscribe: number }) => {
+	const editor = useSlate();
+
 	return (
 		<Button
-			active={isMarkActive(editor, props.format)}
+			active={isMarkActive(editor, props.subscribe, props.format)}
 			onMouseDown={(event: MouseEvent) => {
 				event.preventDefault();
 				toggleMark(editor, props.format);

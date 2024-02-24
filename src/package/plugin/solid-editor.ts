@@ -32,7 +32,6 @@ import {
 	NODE_TO_PARENT,
 } from "../utils/weak-maps";
 import { unwrap } from "solid-js/store";
-import { cloneDeep } from "lodash";
 
 /**
  * A React and DOM-specific version of the `Editor` interface.
@@ -89,7 +88,8 @@ export interface SolidEditorInterface {
 	/**
 	 * Find the path of Slate node.
 	 */
-	findPath: (editor: SolidEditor, node: Node) => Path;
+	// Beware isEditor is needed in case we can't pass in the editor object, but rather the children property only
+	findPath: (editor: SolidEditor, node: Node, isEditor?: boolean) => Path;
 
 	/**
 	 * Focus the editor.
@@ -218,16 +218,16 @@ export interface SolidEditorInterface {
 
 // eslint-disable-next-line no-redeclare
 export const SolidEditor: SolidEditorInterface = {
-	androidPendingDiffs: (editor) => EDITOR_TO_PENDING_DIFFS.get(unwrap(editor)),
+	androidPendingDiffs: (editor) => EDITOR_TO_PENDING_DIFFS.get(editor),
 
 	androidScheduleFlush: (editor) => {
-		EDITOR_TO_SCHEDULE_FLUSH.get(unwrap(editor))?.();
+		EDITOR_TO_SCHEDULE_FLUSH.get(editor)?.();
 	},
 
 	blur: (editor) => {
 		const el = SolidEditor.toDOMNode(editor, editor);
 		const root = SolidEditor.findDocumentOrShadowRoot(editor);
-		IS_FOCUSED.set(unwrap(editor), false);
+		IS_FOCUSED.set(editor, false);
 
 		if (root.activeElement === el) {
 			el.blur();
@@ -323,20 +323,20 @@ export const SolidEditor: SolidEditorInterface = {
 
 	findKey: (editor, node) => {
 		let key = NODE_TO_KEY.get(node);
-		console.log("This is the key: ", key, !key, node);
+		// console.log("This is the key: ", key, !key, node);
 
 		if (!key) {
-			console.log("Couldn't find key: ", key, node);
+			console.log("Couldn't find key for: ", node, key, "inside map: ", NODE_TO_KEY);
 			key = new Key();
 			NODE_TO_KEY.set(node, key);
-			console.log("Successfully set key: ", node, key);
+			console.log("Successfully set key: ", node, key, NODE_TO_KEY);
 		}
 
-		console.log("NODE_TO_KEY Weakmap", NODE_TO_KEY);
+		// console.log("NODE_TO_KEY Weakmap", NODE_TO_KEY);
 		return key;
 	},
 
-	findPath: (editor, node) => {
+	findPath: (editor, node, isEditor) => {
 		const path: Path = [];
 		let child = node;
 
@@ -346,7 +346,7 @@ export const SolidEditor: SolidEditorInterface = {
 
 			if (parent == null) {
 				console.log("parent is null", child);
-				if (Editor.isEditor(child)) {
+				if (isEditor || Editor.isEditor(child)) {
 					return path;
 				} else {
 					break;
@@ -368,7 +368,7 @@ export const SolidEditor: SolidEditorInterface = {
 
 	focus: (editor, options = { retries: 5 }) => {
 		// Return if already focused
-		if (IS_FOCUSED.get(unwrap(editor))) {
+		if (IS_FOCUSED.get(editor)) {
 			return;
 		}
 
@@ -402,13 +402,13 @@ export const SolidEditor: SolidEditorInterface = {
 			}
 			// IS_FOCUSED should be set before calling el.focus() to ensure that
 			// FocusedContext is updated to the correct value
-			IS_FOCUSED.set(unwrap(editor), true);
+			IS_FOCUSED.set(editor, true);
 			el.focus({ preventScroll: true });
 		}
 	},
 
 	getWindow: (editor) => {
-		const window = EDITOR_TO_WINDOW.get(unwrap(editor));
+		const window = EDITOR_TO_WINDOW.get(editor);
 		if (!window) {
 			throw new Error("Unable to find a host window element for this editor");
 		}
@@ -471,15 +471,15 @@ export const SolidEditor: SolidEditorInterface = {
 	insertTextData: (editor, data) => editor.insertTextData(data),
 
 	isComposing: (editor) => {
-		return !!IS_COMPOSING.get(unwrap(editor));
+		return !!IS_COMPOSING.get(editor);
 	},
 
-	isFocused: (editor) => !!IS_FOCUSED.get(unwrap(editor)),
+	isFocused: (editor) => !!IS_FOCUSED.get(editor),
 
-	isReadOnly: (editor) => !!IS_READ_ONLY.get(unwrap(editor)),
+	isReadOnly: (editor) => !!IS_READ_ONLY.get(editor),
 
 	isTargetInsideNonReadonlyVoid: (editor, target) => {
-		if (IS_READ_ONLY.get(unwrap(editor))) return false;
+		if (IS_READ_ONLY.get(editor)) return false;
 
 		const slateNode = SolidEditor.hasTarget(editor, target) && SolidEditor.toSlateNode(editor, target);
 		return Element.isElement(slateNode) && Editor.isVoid(editor, slateNode);
@@ -494,18 +494,19 @@ export const SolidEditor: SolidEditorInterface = {
 	},
 
 	toDOMNode: (editor, node) => {
-		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor));
+		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
 		const key = SolidEditor.findKey(editor, node);
-		console.log(
-			"Debugging SolidEditor toDOMNode",
-			node,
-			SolidEditor.findKey(editor, node),
-			KEY_TO_ELEMENT,
-			// KEY_TO_ELEMENT?.get({ id: "134" }),
-			KEY_TO_ELEMENT?.get(key)
-		);
+		// console.log(
+		// 	"Debugging SolidEditor toDOMNode",
+		// 	node,
+		// 	SolidEditor.findKey(editor, node),
+		// 	key,
+		// 	KEY_TO_ELEMENT,
+		// 	// KEY_TO_ELEMENT?.get({ id: "134" }),
+		// 	KEY_TO_ELEMENT?.get(key)
+		// );
 		const domNode = Editor.isEditor(node)
-			? EDITOR_TO_ELEMENT.get(unwrap(editor))
+			? EDITOR_TO_ELEMENT.get(editor)
 			: KEY_TO_ELEMENT?.get(SolidEditor.findKey(editor, node));
 
 		if (!domNode) {

@@ -5,7 +5,6 @@ import { useSlateStatic } from "../hooks/use-slate-static";
 import { EDITOR_TO_KEY_TO_ELEMENT, ELEMENT_TO_NODE, NODE_TO_ELEMENT } from "../utils/weak-maps";
 import { RenderLeafProps, RenderPlaceholderProps } from "./editable";
 import Leaf, { LeafProps } from "./leaf";
-import { unwrap } from "solid-js/store";
 
 /**
  * Text.
@@ -25,7 +24,7 @@ const Text = (props: TextComponentProps) => {
 	let ref: HTMLSpanElement | undefined | null;
 	// May convert to functions and <For> loop (or mapArray)
 	const leaves = () => SlateText.decorations(props.text, props.decorations);
-	const key = () => SolidEditor.findKey(editor(), props.text);
+	const key = () => SolidEditor.findKey(editor, props.text);
 	const [children, setChildren] = createSignal<LeafProps[]>([]);
 
 	createEffect((value) => console.log("TextProps updated: ", props, value));
@@ -54,9 +53,9 @@ const Text = (props: TextComponentProps) => {
 
 	// Update element-related weak maps with the DOM element ref.
 	function callbackRef(span: HTMLSpanElement | null) {
-		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor()));
+		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
 		if (span) {
-			console.log("Setting Keys of Text .set", key(), span);
+			console.log("Setting Keys of Text .set use-children.tsx", key(), span);
 			KEY_TO_ELEMENT?.set(key(), span);
 			NODE_TO_ELEMENT.set(props.text, span);
 			ELEMENT_TO_NODE.set(span, props.text);
