@@ -30,7 +30,6 @@ const App = () => {
 	// const randLetters = ["a", "b", "c", "d", "e", "f", "g", "h", "i"];
 
 	function onEditorSelectionChange(selection: BaseSelection) {
-		console.log("Updating Selection, Hotkey");
 		batch(() => {
 			setStore("selection", selection);
 			setStore("version", (prev) => (prev += 1));

@@ -172,12 +172,15 @@ export const withSolid = <T extends BaseEditor>(
 
 		for (const [path, key] of matches) {
 			const [node] = Editor.node(e, path);
+			console.log("Setting Node_to_keys 1 -- ", node, key);
 			NODE_TO_KEY.set(node, key);
 		}
+		console.log(NODE_TO_KEY);
 
 		for (const [pathRef, key] of pathRefMatches) {
 			if (pathRef.current) {
 				const [node] = Editor.node(e, pathRef.current);
+				console.log("Setting Node_to_keys 2 -- ", node, key);
 				NODE_TO_KEY.set(node, key);
 			}
 		}

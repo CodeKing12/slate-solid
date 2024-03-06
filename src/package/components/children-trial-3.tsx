@@ -10,7 +10,6 @@ import { SelectedContext } from "../hooks/use-selected";
 import { useSlateStatic } from "../hooks/use-slate-static";
 import { For, Index, JSX, Match, Switch, createEffect, createRenderEffect, createSignal } from "solid-js";
 import { cloneDeep, toInteger } from "lodash";
-import { Key } from "@solid-primitives/keyed";
 
 /**
  * Children.
@@ -31,65 +30,81 @@ const Children = (props: {
 	const path = () => SolidEditor.findPath(editor, props.node);
 	const isLeafBlock = () =>
 		Element.isElement(props.node) && !editor.isInline(props.node) && Editor.hasInlines(editor, props.node);
+	const [children, setChildren] = createSignal([])
+
+
+	createRenderEffect(() => {
+		const newChildren = [];
+		for (let i=0; i < props.reactive.children.length; i++) {
+			const p = path().concat(i);
+			const n = props.node.children[i] as Descendant;
+			const key = SolidEditor.findKey(editor, n);
+			const range = Editor.range(editor, p);
+			const sel =
+				props.selection && Range.intersection(range, editor.selection || cloneDeep(props.selection));
+			const ds = decorate()([n, p]);
+
+			for (const dec of props.decorations) {
+				const d = Range.intersection(dec, range);
+
+				if (d) {
+					ds.push(d);
+				}
+			}
+
+			newChildren.push({
+				key,
+				range,
+				descendant: n,
+				selection: sel,
+				decorations: ds,
+				reactive: props.reactive.children[i]
+			})
+		}
+
+		setChildren(newChildren)
+	})
 
 	return (
 		<>
-			{/* <Key
-				each={props.reactive?.children}
-				by={(_, index) => SolidEditor.findKey(editor, props.node.children[index])}
-			> */}
-			<For each={props.reactive?.children}>
-				{(_, index) => {
-					const p = path().concat(index());
-					const n = props.node.children[index()] as Descendant;
-					const key = SolidEditor.findKey(editor, n);
-					const range = Editor.range(editor, p);
-					const sel =
-						props.selection && Range.intersection(range, editor.selection || cloneDeep(props.selection));
-					const ds = decorate()([n, p]);
-
-					for (const dec of props.decorations) {
-						const d = Range.intersection(dec, range);
-
-						if (d) {
-							ds.push(d);
-						}
-					}
+			<For each={children()}>
+				{(child, index) => {
 
 					// Beware we moved this code to run before the component is pushed to the array so that when the component calls the hook, we will be able to find the path to the component node
-					NODE_TO_INDEX.set(n, index());
-					NODE_TO_PARENT.set(n, props.node);
+					NODE_TO_INDEX.set(child.descendant, index());
+					NODE_TO_PARENT.set(child.descendant, props.node);
 
-					if (Element.isElement(n)) {
+					if (Element.isElement(child.descendant)) {
 						return (
-							<SelectedContext.Provider value={!!sel}>
+							<SelectedContext.Provider value={!!child.selection}>
 								<ElementComponent
-									decorations={ds}
-									element={n}
-									reactive={props.reactive.children[index()]}
+									decorations={child.decorations}
+									element={child.descendant}
+									// reactive={props.reactive.children[index()]}
+									reactive={child.reactive}
 									renderElement={props.renderElement}
 									renderPlaceholder={props.renderPlaceholder}
 									renderLeaf={props.renderLeaf}
-									selection={sel}
+									selection={child.selection}
 								/>
 							</SelectedContext.Provider>
 						);
 					} else {
 						return (
 							<TextComponent
-								decorations={ds}
-								reactive={props.reactive.children[index()]}
+								decorations={child.decorations}
+								// reactive={props.reactive.children[index()]}
+								reactive={child.reactive}
 								isLast={isLeafBlock() && index() === props.node.children.length - 1}
 								parent={props.node}
 								renderPlaceholder={props.renderPlaceholder}
 								renderLeaf={props.renderLeaf}
-								text={n}
+								text={child.descendant}
 							/>
 						);
 					}
 				}}
 			</For>
-			{/* </Key> */}
 		</>
 	);
 };

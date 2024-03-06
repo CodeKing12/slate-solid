@@ -62,6 +62,8 @@ import {
 	IS_READ_ONLY,
 	MARK_PLACEHOLDER_SYMBOL,
 	NODE_TO_ELEMENT,
+	NODE_TO_INDEX,
+	NODE_TO_PARENT,
 	PLACEHOLDER_SYMBOL,
 } from "../utils/weak-maps";
 import { RestoreDOM } from "./restore-dom/restore-dom";
@@ -69,6 +71,7 @@ import { AndroidInputManager } from "../hooks/android-input-manager/android-inpu
 import { Dynamic } from "solid-js/web";
 import Children from "./children";
 import { EditorStoreObj } from "../../App";
+import { Key } from "@solid-primitives/keyed";
 
 type DeferredOperation = () => void;
 type EventTargets = { currentTarget: HTMLDivElement; target: DOMElement };
@@ -197,6 +200,16 @@ export const Editable = (props: EditableProps) => {
 		hasMarkPlaceholder: false,
 	}));
 
+	// The autoFocus TextareaHTMLAttribute doesn't do anything on a div, so it
+	// needs to be manually focused.
+	createEffect(
+		on([() => merged.autofocus], () => {
+			if (ref && merged.autofocus) {
+				ref.focus();
+			}
+		})
+	);
+
 	/**
 	 * The AndroidInputManager object has a cyclical dependency on onDOMSelectionChange
 	 *
@@ -223,7 +236,7 @@ export const Editable = (props: EditableProps) => {
 	const onDOMSelectionChange = createMemo(
 		on([() => merged.reactive.children, () => merged.reactive.selection, () => merged.readOnly, state], () =>
 			throttle(() => {
-				console.log("Running throttler");
+				// console.log("Running throttler");
 				const androidInputManager = androidInputManagerRef;
 				if (
 					(IS_ANDROID || !SolidEditor.isComposing(editor)) &&
@@ -469,16 +482,6 @@ export const Editable = (props: EditableProps) => {
 					clearTimeout(timeoutId);
 				}
 			};
-		})
-	);
-
-	// The autoFocus TextareaHTMLAttribute doesn't do anything on a div, so it
-	// needs to be manually focused.
-	createEffect(
-		on([() => merged.autofocus], () => {
-			if (ref && merged.autofocus) {
-				ref.focus();
-			}
 		})
 	);
 
@@ -770,7 +773,7 @@ export const Editable = (props: EditableProps) => {
 		const window = SolidEditor.getWindow(editor);
 
 		window.document.addEventListener("selectionchange", () => {
-			console.log("Running Selection Change");
+			// console.log("Running Selection Change");
 			return scheduleOnDOMSelectionChange()();
 		});
 
@@ -854,6 +857,26 @@ export const Editable = (props: EditableProps) => {
 			});
 		})
 	);
+
+	const setChildren = (reactive, parent) => {
+		for (let i = 0; i < reactive.length; i++) {
+			const n = parent.children[i];
+			NODE_TO_INDEX.set(n, i);
+			NODE_TO_PARENT.set(n, parent);
+			console.log("Setting Indexes & Parents", n, i, parent);
+
+			if (Element.isElement(n)) {
+				setChildren(reactive[i].children, n);
+			}
+		}
+	};
+
+	createRenderEffect(() => {
+		setChildren(props.reactive.children, editor);
+		// NODE_TO_INDEX.set(merge.element.children[i], i);
+		// NODE_TO_PARENT.set(merge.element.children[i], merge.element);
+		// console.log("Setting Indexes & Parents", merge.element.children[i], i, merge.element);
+	});
 
 	const getReadOnly = () => merged.readOnly;
 	const getDecorate = () => merged.decorate;
@@ -1388,7 +1411,6 @@ export const Editable = (props: EditableProps) => {
 									// event.preventDefault();
 
 									if (editor.selection && Range.isCollapsed(editor.selection)) {
-										console.log("Moving Forward", editor, editor.selection);
 										Transforms.move(editor, { reverse: isRTL });
 									} else {
 										Transforms.collapse(editor, {
@@ -1576,15 +1598,45 @@ export const Editable = (props: EditableProps) => {
 							selection: editor.selection,
 							isEditor: true,
 						})} */}
-						<Children
-							decorations={decorations()}
-							node={editor}
-							reactive={merged.reactive}
-							renderElement={merged.renderElement}
-							renderPlaceholder={merged.renderPlaceholder}
-							renderLeaf={merged.renderLeaf}
-							selection={merged.reactive.selection}
-						/>
+						<Key
+							each={props.reactive?.children}
+							by={(_, index) => SolidEditor.findKey(editor, editor.children[index])}
+						>
+							{(reactiveNode, index) => {
+								console.log("Re-running Key for this index", index());
+								setChildren(props.reactive.children, editor);
+
+								return (
+									<Children
+										decorations={decorations()}
+										node={editor.children[index()]}
+										reactive={reactiveNode()}
+										renderElement={merged.renderElement}
+										renderPlaceholder={merged.renderPlaceholder}
+										renderLeaf={merged.renderLeaf}
+										selection={merged.reactive.selection}
+										index={index()}
+										parent={editor}
+										reactiveParent={props.reactive}
+									/>
+								);
+							}}
+						</Key>
+						{/* <For each={merged.reactive?.children}>
+							{(reactiveNode, index) => (
+								<Children
+									decorations={decorations()}
+									node={editor.children[index()]}
+									reactive={reactiveNode}
+									parent={editor}
+									renderElement={merged.renderElement}
+									renderPlaceholder={merged.renderPlaceholder}
+									renderLeaf={merged.renderLeaf}
+									selection={merged.reactive.selection}
+									index={index()}
+								/>
+							)}
+						</For> */}
 					</Dynamic>
 				</RestoreDOM>
 			</DecorateContext.Provider>
@@ -1698,3 +1750,4 @@ export const isDOMEventHandled = <E extends Event>(event: E, handler?: (event: E
 
 	return event.defaultPrevented;
 };
+
