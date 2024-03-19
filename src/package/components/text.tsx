@@ -31,6 +31,7 @@ const Text = (props: TextComponentProps) => {
 	function callbackRef(span: HTMLSpanElement | null) {
 		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
 		if (span) {
+			console.log("Setting Text.tsx Key_To_Element: ", key(), span, props.text)
 			KEY_TO_ELEMENT?.set(key(), span);
 			NODE_TO_ELEMENT.set(props.text, span);
 			ELEMENT_TO_NODE.set(span, props.text);

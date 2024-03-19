@@ -1,5 +1,5 @@
 import { JSX, createEffect, createRenderEffect, createSignal, onCleanup, onMount, splitProps } from "solid-js";
-import { Descendant, Editor, Node, Operation, Scrubber } from "slate";
+import { Descendant, Editor, Node, Operation, Scrubber, Transforms } from "slate";
 import { FocusedContext } from "../hooks/use-focused";
 import { SlateContext, SlateContextValue } from "../hooks/use-slate";
 import { useSelectorContext, SlateSelectorContext } from "../hooks/use-slate-selector";
@@ -41,8 +41,9 @@ export const Slate = (props: {
 		if (!Editor.isEditor(split.editor())) {
 			throw new Error(`[Slate] editor is invalid! You passed: ${Scrubber.stringify(split.editor())}`);
 		}
-		split.editor().children = split.initialValue;
-		split.onValueChange?.(split.initialValue);
+		// split.editor().children = split.initialValue;
+		Transforms.insertNodes(split.editor(), split.initialValue)
+		// split.onValueChange?.(split.initialValue);
 		Object.assign(split.editor(), rest);
 		// split.setEditor("children", split.initialValue);
 		// split.setEditor(rest);

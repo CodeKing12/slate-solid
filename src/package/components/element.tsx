@@ -36,6 +36,7 @@ export interface ElementComponentProps {
 }
 
 const Element = (props: ElementComponentProps) => {
+	console.log("Re-created <Element/>")
 	const merge = mergeProps(
 		{
 			renderElement: (p: RenderElementProps) => <DefaultElement {...p} />,
@@ -50,6 +51,7 @@ const Element = (props: ElementComponentProps) => {
 		// Update element-related weak maps with the DOM element ref.
 		const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(unwrap(editor));
 		if (ref) {
+			console.log("Setting Element.tsx Key_To_Element: ", key(), ref, merge.element)
 			KEY_TO_ELEMENT?.set(key(), ref);
 			NODE_TO_ELEMENT.set(merge.element, ref);
 			ELEMENT_TO_NODE.set(ref, merge.element);
@@ -135,6 +137,7 @@ const Element = (props: ElementComponentProps) => {
 						}}
 					>
 						<Text
+						reactive={merge.reactive}
 							renderPlaceholder={merge.renderPlaceholder}
 							decorations={[]}
 							isLast={false}

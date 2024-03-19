@@ -14,6 +14,8 @@
 		"@typescript-eslint/parser": "^7.0.1",
 		"eslint": "^8.56.0",
 		"eslint-plugin-solid": "^0.13.1",
+		"prettier": "^3.2.5",
+		"prettier-eslint": "^16.3.0",
 		"slate": "^0.101.5",
 		"solid-devtools": "^0.29.2",
 		"source-map-loader": "^4.0.1",
