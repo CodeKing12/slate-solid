@@ -8,12 +8,13 @@ import { EditorContext } from "./use-slate-static";
  */
 
 export const useEditor = () => {
-	const editor = useContext(EditorContext);
+  const context = useContext(EditorContext);
 
-	if (!editor) {
-		throw new Error(`The \`useEditor\` hook must be used inside the <Slate> component's context.`);
-	}
+  if (!context) {
+    throw new Error(
+      `The \`useEditor\` hook must be used inside the <Slate> component's context.`,
+    );
+  }
 
-	return editor().editor();
+  return context().editor;
 };
-

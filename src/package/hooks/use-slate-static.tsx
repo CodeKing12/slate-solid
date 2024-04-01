@@ -7,19 +7,22 @@ import { SlateContextValue } from "./use-slate";
  * A React context for sharing the editor object.
  */
 
-export const EditorContext = createContext<Accessor<SlateContextValue> | null>(null);
+export const EditorContext = createContext<Accessor<SlateContextValue> | null>(
+  null,
+);
 
 /**
  * Get the current editor object from the Solid context.
  */
 
 export const useSlateStatic = (): Editor => {
-	const context = useContext(EditorContext);
+  const context = useContext(EditorContext);
 
-	if (!context) {
-		throw new Error(`The \`useSlateStatic\` hook must be used inside the <Slate> component's context.`);
-	}
+  if (!context) {
+    throw new Error(
+      `The \`useSlateStatic\` hook must be used inside the <Slate> component's context.`,
+    );
+  }
 
-	return context().editor();
+  return context().editor();
 };
-
