@@ -5,6 +5,7 @@ import {
   Editor,
   Element,
   Range,
+  Text as SlateText,
 } from "slate";
 import {
   RenderElementProps,
@@ -45,7 +46,6 @@ const Children = (props: {
   renderLeaf?: (props: RenderLeafProps) => JSX.Element;
   selection: Range | null;
 }) => {
-  const decorate = useDecorate();
   const editor = useSlateStatic();
 
   const path = () => SolidEditor.findPath(editor, props.node);
@@ -65,40 +65,9 @@ const Children = (props: {
 				by={(_, index) => SolidEditor.findKey(editor, props.node.children[index])}
 			> */}
       <For each={props.reactive?.children}>
-        {(_, index) => {
-          // const p = path().concat(index());
-          // console.log(
-          //   "Running for: ",
-          //   _,
-          //   index(),
-          //   editor,
-          //   p,
-          //   props.reactive?.children,
-          // );
-          const n = props.node.children[index()] as Descendant;
-          // if (!n) {
-          //   return;
-          // }
-          // const key = SolidEditor.findKey(editor, n);
-          // const range = Editor.range(editor, p);
-          // const sel =
-          //   props.selection && Range.intersection(range, props.selection);
-          // const ds = decorate()([n, p]);
-
-          // for (const dec of props.decorations) {
-          //   const d = Range.intersection(dec, range);
-
-          //   if (d) {
-          //     ds.push(d);
-          //   }
-          // }
-
-          // Beware we moved this code to run before the component is pushed to the array so that when the component calls the hook, we will be able to find the path to the component node
-          // NODE_TO_INDEX.set(n, index());
-          // NODE_TO_PARENT.set(n, props.node);
-
-          if (Element.isElement(n)) {
-            return (
+        {(_, index) => (
+          <Switch>
+            <Match when={Element.isElement(props.node.children[index()])}>
               <OutputElement
                 index={index()}
                 parent={props.node}
@@ -111,12 +80,11 @@ const Children = (props: {
                 renderPlaceholder={props.renderPlaceholder}
                 renderLeaf={props.renderLeaf}
               ></OutputElement>
-            );
-          } else {
-            return (
+            </Match>
+            <Match when={!Element.isElement(props.node.children[index()])}>
               <OutputText
                 index={index()}
-                text={n}
+                text={props.node.children[index()] as SlateText}
                 reactive={props.reactive.children[index()]}
                 isLast={
                   isLeafBlock() && index() === props.node.children.length - 1
@@ -128,9 +96,9 @@ const Children = (props: {
                 renderPlaceholder={props.renderPlaceholder}
                 renderLeaf={props.renderLeaf}
               />
-            );
-          }
-        }}
+            </Match>
+          </Switch>
+        )}
       </For>
       {/* </Key> */}
     </>
