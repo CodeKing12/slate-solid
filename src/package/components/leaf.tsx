@@ -66,6 +66,10 @@ const Leaf = (props: LeafProps) => {
     props,
   );
 
+  // createEffect(() => {
+  //   console.log("<Leaf/> Updated", props.leaf, props.text);
+  // });
+
   const editor = useSlateStatic();
   let placeholderResizeObserver: ResizeObserver | null = null;
   let placeholderRef: HTMLElement | null = null;

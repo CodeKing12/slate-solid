@@ -86,6 +86,7 @@ export const Slate = (props: {
     if (split.onChange) {
       split.onChange(split.editor().children);
     }
+    console.log("Operation", options?.operation);
 
     switch (options?.operation?.type) {
       case "set_selection":

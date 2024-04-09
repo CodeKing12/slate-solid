@@ -9,7 +9,7 @@ import {
   Element as SlateElement,
   BaseSelection,
 } from "slate";
-import { createStore } from "solid-js/store";
+import { createStore, reconcile } from "solid-js/store";
 import { Button, ExampleContent, Icon, Toolbar } from "./components";
 
 const HOTKEYS = {
@@ -48,6 +48,7 @@ const App = () => {
   }
 
   function onEditorChange(children: Descendant[]) {
+    console.log("Running Operation Change", children);
     batch(() => {
       setStore("children", children);
       setStore("version", (prev) => (prev += 1));

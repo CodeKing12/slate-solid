@@ -39,7 +39,12 @@ export interface ElementComponentProps {
 }
 
 const Element = (props: ElementComponentProps) => {
-  console.log("Re-created <Element/>");
+  // console.log("Re-created <Element/>");
+
+  // createEffect(() =>
+  //   console.log("<Element/> Updated", props.element, props.reactive),
+  // );
+
   const merge = mergeProps(
     {
       renderElement: (p: RenderElementProps) => <DefaultElement {...p} />,

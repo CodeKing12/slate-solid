@@ -1,4 +1,11 @@
-import { Ancestor, Descendant, Editor, Element, Range } from "slate";
+import {
+  Ancestor,
+  BaseElement,
+  Descendant,
+  Editor,
+  Element,
+  Range,
+} from "slate";
 import {
   RenderElementProps,
   RenderLeafProps,
@@ -23,8 +30,7 @@ import {
   createSignal,
   on,
 } from "solid-js";
-import { cloneDeep, toInteger } from "lodash";
-import { Key } from "@solid-primitives/keyed";
+import { OutputElement, OutputText } from "./output";
 
 /**
  * Children.
@@ -41,7 +47,6 @@ const Children = (props: {
 }) => {
   const decorate = useDecorate();
   const editor = useSlateStatic();
-  // const [loopCount, setLoopCount] = createSignal<any[]>([]);
 
   const path = () => SolidEditor.findPath(editor, props.node);
   const isLeafBlock = () =>
@@ -49,14 +54,9 @@ const Children = (props: {
     !editor.isInline(props.node) &&
     Editor.hasInlines(editor, props.node);
 
-  // createRenderEffect(
-  //   on([() => props.reactive?.children], () => {
-  //     if (props.reactive?.children.length !== loopCount()) {
-  //       console.log("Updating count");
-  //       setLoopCount(Array(props.node?.children.length).fill(0));
-  //     }
-  //   }),
-  // );
+  createEffect(() =>
+    console.log("Reactive Children Updated: ", props.reactive?.children),
+  );
 
   return (
     <>
@@ -66,56 +66,67 @@ const Children = (props: {
 			> */}
       <For each={props.reactive?.children}>
         {(_, index) => {
-          const p = path().concat(index());
+          // const p = path().concat(index());
+          // console.log(
+          //   "Running for: ",
+          //   _,
+          //   index(),
+          //   editor,
+          //   p,
+          //   props.reactive?.children,
+          // );
           const n = props.node.children[index()] as Descendant;
-          const key = SolidEditor.findKey(editor, n);
-          const range = Editor.range(editor, p);
-          const sel =
-            props.selection &&
-            Range.intersection(
-              range,
-              editor.selection || cloneDeep(props.selection),
-            );
-          const ds = decorate()([n, p]);
+          // if (!n) {
+          //   return;
+          // }
+          // const key = SolidEditor.findKey(editor, n);
+          // const range = Editor.range(editor, p);
+          // const sel =
+          //   props.selection && Range.intersection(range, props.selection);
+          // const ds = decorate()([n, p]);
 
-          for (const dec of props.decorations) {
-            const d = Range.intersection(dec, range);
+          // for (const dec of props.decorations) {
+          //   const d = Range.intersection(dec, range);
 
-            if (d) {
-              ds.push(d);
-            }
-          }
+          //   if (d) {
+          //     ds.push(d);
+          //   }
+          // }
 
           // Beware we moved this code to run before the component is pushed to the array so that when the component calls the hook, we will be able to find the path to the component node
-          NODE_TO_INDEX.set(n, index());
-          NODE_TO_PARENT.set(n, props.node);
+          // NODE_TO_INDEX.set(n, index());
+          // NODE_TO_PARENT.set(n, props.node);
 
           if (Element.isElement(n)) {
             return (
-              <SelectedContext.Provider value={!!sel}>
-                <ElementComponent
-                  decorations={ds}
-                  element={n}
-                  reactive={props.reactive.children[index()]}
-                  renderElement={props.renderElement}
-                  renderPlaceholder={props.renderPlaceholder}
-                  renderLeaf={props.renderLeaf}
-                  selection={sel}
-                />
-              </SelectedContext.Provider>
+              <OutputElement
+                index={index()}
+                parent={props.node}
+                n={props.node.children[index()] as BaseElement}
+                reactive={props.reactive.children[index()]}
+                path={path().concat(index())}
+                selection={props.selection}
+                decorations={props.decorations}
+                renderElement={props.renderElement}
+                renderPlaceholder={props.renderPlaceholder}
+                renderLeaf={props.renderLeaf}
+              ></OutputElement>
             );
           } else {
             return (
-              <TextComponent
-                decorations={ds}
+              <OutputText
+                index={index()}
+                text={n}
                 reactive={props.reactive.children[index()]}
                 isLast={
                   isLeafBlock() && index() === props.node.children.length - 1
                 }
                 parent={props.node}
+                path={path().concat(index())}
+                selection={props.selection}
+                decorations={props.decorations}
                 renderPlaceholder={props.renderPlaceholder}
                 renderLeaf={props.renderLeaf}
-                text={n}
               />
             );
           }
