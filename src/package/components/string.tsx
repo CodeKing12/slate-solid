@@ -35,7 +35,7 @@ const String = (props: {
     Editor.string(editor, parentPath()) === "";
 
   createEffect(() => {
-    console.log("Updated", props.leaf, props.text);
+    console.log("Updated String", props.leaf, props.text);
   });
 
   return (

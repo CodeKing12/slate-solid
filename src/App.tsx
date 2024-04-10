@@ -42,7 +42,7 @@ const App = () => {
 
   function onEditorSelectionChange(selection: BaseSelection) {
     batch(() => {
-      setStore("selection", selection);
+      setStore("selection", reconcile(selection));
       setStore("version", (prev) => (prev += 1));
     });
   }
@@ -50,31 +50,13 @@ const App = () => {
   function onEditorChange(children: Descendant[]) {
     console.log("Running Operation Change", children);
     batch(() => {
-      setStore("children", children);
+      setStore("children", reconcile(children));
       setStore("version", (prev) => (prev += 1));
     });
   }
 
   function runMe() {
-    console.log(
-      "The Key: ",
-      SolidEditor.findKey(editor(), editor().children?.[3]),
-      editor().children?.[3],
-    );
-
-    Transforms.insertText(
-      editor(),
-      "abcdefghi"[Math.round(Math.random() * 10)],
-      {
-        at: [3, 0],
-      },
-    );
-
-    console.log(
-      "The Key: ",
-      SolidEditor.findKey(editor(), editor().children?.[3]),
-      editor().children?.[3],
-    );
+    setStore("children", updatedData);
   }
 
   return (
@@ -381,6 +363,78 @@ const initialValue: Descendant[] = [
     type: "paragraph",
     align: "center",
     children: [{ text: "Try it out for yourself!" }],
+  },
+];
+
+const updatedData = [
+  {
+    type: "paragraph",
+    children: [
+      {
+        text: "This is editable ",
+      },
+      {
+        text: "rich",
+        bold: true,
+      },
+      {
+        text: " text, ",
+      },
+      {
+        text: "much",
+        italic: true,
+      },
+      {
+        text: " better than a ",
+      },
+      {
+        text: "<textarea>",
+        code: true,
+      },
+      {
+        text: "!",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        text: "Since it's rich text, you can do things like turn a selection of text ",
+      },
+      {
+        text: "bold",
+        bold: true,
+      },
+      {
+        text: ", or add a semantically rendered block quote in the middle of the page, like this:",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    children: [
+      {
+        text: "",
+      },
+    ],
+  },
+  {
+    type: "block-quote",
+    children: [
+      {
+        text: "A wise quote.",
+      },
+    ],
+  },
+  {
+    type: "paragraph",
+    align: "center",
+    children: [
+      {
+        text: "Try it out for yourself!",
+      },
+    ],
   },
 ];
 

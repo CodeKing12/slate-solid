@@ -79,7 +79,7 @@ const Children = (props: {
                 renderElement={props.renderElement}
                 renderPlaceholder={props.renderPlaceholder}
                 renderLeaf={props.renderLeaf}
-              ></OutputElement>
+              />
             </Match>
             <Match when={!Element.isElement(props.node.children[index()])}>
               <OutputText

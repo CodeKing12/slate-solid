@@ -36,9 +36,9 @@ const Text = (props: TextComponentProps) => {
   const leaves = () => SlateText.decorations(props.text, props.decorations);
   const key = () => SolidEditor.findKey(editor, props.text);
   // console.log("Here are the Leaves: ", leaves());
-  // createEffect(() =>
-  //   console.log("<Text/> Updated", props.text, props.reactive),
-  // );
+  createEffect(() =>
+    console.log("<Text/> Updated", props.text, props.reactive),
+  );
 
   // Update element-related weak maps with the DOM element ref.
   function callbackRef(span: HTMLSpanElement | null) {

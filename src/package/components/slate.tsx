@@ -91,7 +91,7 @@ export const Slate = (props: {
     switch (options?.operation?.type) {
       case "set_selection":
         split.onSelectionChange?.(split.editor().selection);
-        break;
+      // break;
       default:
         split.onValueChange?.(split.editor().children);
     }
