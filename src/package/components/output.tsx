@@ -68,6 +68,7 @@ export function OutputElement(props: OutputElementProps) {
     NODE_TO_PARENT.set(props.n, props.parent);
 
     try {
+      // The purpose of this is to check if the Weakmaps for the parents have been set and if not, properly set them
       const test = props.path;
     } catch (error) {
       if (elementContext) {
@@ -191,6 +192,7 @@ export function OutputText(props: OutputTextProps) {
         NODE_TO_INDEX.set(props.text, props.index);
         NODE_TO_PARENT.set(props.text, props.parent);
         try {
+          // The purpose of this is to check if the Weakmaps for the parents have been set and if not, properly set them
           const test = props.path;
         } catch (error) {
           elementContext.setWeakmaps();
