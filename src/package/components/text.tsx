@@ -42,7 +42,9 @@ const Text = (props: TextComponentProps) => {
   let ref: HTMLSpanElement | undefined | null;
   // const leaves = () => SlateText.decorations(props.text, props.decorations);
   const key = () => SolidEditor.findKey(editor, props.text);
-  const [leaves, setLeaves] = createStore<SlateText[]>([]);
+  const [leaves, setLeaves] = createStore<SlateText[]>(
+    SlateText.decorations(props.text, props.decorations)
+  );
   const reactiveUpdates = captureStoreUpdates(props.reactive);
 
   // const [leaves, setLeaves] = createSignal<SlateText[]>([]);
@@ -50,7 +52,7 @@ const Text = (props: TextComponentProps) => {
   // console.log("Here are the Leaves: ", leaves());
 
   console.log("New Text element");
-  createRenderEffect(
+  createEffect(
     on([reactiveUpdates], () => {
       console.log(
         "<Text/> Updated",
@@ -60,7 +62,8 @@ const Text = (props: TextComponentProps) => {
       );
 
       setLeaves(
-        reconcile(SlateText.decorations(props.text, props.decorations))
+        0,
+        reconcile(SlateText.decorations(props.text, props.decorations)[0])
       );
 
       // setLeaves(SlateText.decorations(props.text, props.decorations));
@@ -68,6 +71,10 @@ const Text = (props: TextComponentProps) => {
       console.log(SlateText.decorations(props.text, props.decorations));
     })
   );
+
+  createEffect(() => {
+    console.log("createEffect leaves updated: ", leaves[0]);
+  });
 
   // Update element-related weak maps with the DOM element ref.
   function callbackRef(span: HTMLSpanElement | null) {

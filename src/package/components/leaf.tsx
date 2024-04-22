@@ -78,7 +78,8 @@ const Leaf = (props: LeafProps) => {
     Boolean(merge.leaf[PLACEHOLDER_SYMBOL])
   );
   const [showPlaceholder, setShowPlaceholder] = createSignal(false);
-  const storeUpdates = captureStoreUpdates(props.leaf);
+  // using the ReactiveText store is more reactive than props.leaf. Props.leaf doesnt call the effect most times.
+  const storeUpdates = captureStoreUpdates(merge.leaf);
   const [styles, setStyles] = createSignal<JSX.CSSProperties>({});
   // <>testing initial load signal</>
 
@@ -153,7 +154,7 @@ const Leaf = (props: LeafProps) => {
       // }
 
       const styles: JSX.CSSProperties = {};
-      console.log("Children before if-s: ", children);
+      console.log("<Leaf/> Updated", props.leaf, props.reactiveText);
 
       if (merge.leaf.bold) {
         Object.assign(styles, defaultStyles.bold);
@@ -175,7 +176,7 @@ const Leaf = (props: LeafProps) => {
         children = <u>{children}</u>;
       }
 
-      console.log("New Children: ", children);
+      console.log("New Children: ", children, merge.leaf, merge.reactiveText);
       setLeafChildren(children);
       setStyles(styles);
     })
@@ -185,16 +186,16 @@ const Leaf = (props: LeafProps) => {
     console.log("New Leaf Element");
   });
 
-  createEffect(
-    on([storeUpdates], () => {
-      console.log(
-        "<Leaf/> Updated",
-        merge.leaf,
-        merge.text,
-        merge.reactiveText
-      );
-    })
-  );
+  // createEffect(
+  //   on([storeUpdates], () => {
+  //     console.log(
+  //       "<Leaf/> Updated",
+  //       merge.leaf,
+  //       merge.text,
+  //       merge.reactiveText
+  //     );
+  //   })
+  // );
 
   const editor = useSlateStatic();
   let placeholderResizeObserver: ResizeObserver | null = null;
@@ -261,6 +262,30 @@ const Leaf = (props: LeafProps) => {
     <>
       <span {...attributes} style={styles()}>
         {/* {leafChildren()} */}
+        <Show when={leafIsPlaceholder() && showPlaceholder()}>
+          <DefaultLeaf
+            attributes={{
+              "data-slate-placeholder": true,
+              style: {
+                position: "absolute",
+                top: 0,
+                "pointer-events": "none",
+                width: "100%",
+                "max-width": "100%",
+                display: "block",
+                opacity: "0.333",
+                "user-select": "none",
+                "text-decoration": "none",
+                // Fixes https://github.com/udecode/plate/issues/2315
+                "-webkit-user-modify": IS_WEBKIT ? "inherit" : undefined,
+              },
+            }}
+            contentEditable={false}
+            ref={callbackPlaceholderRef}
+          >
+            {merge.leaf.placeholder}
+          </DefaultLeaf>
+        </Show>
         <String
           isLast={merge.isLast}
           leaf={merge.leaf}
