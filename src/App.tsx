@@ -41,7 +41,7 @@ export type EditorStoreObj = {
   version: number;
 };
 
-console.log = function () {};
+// console.log = function () {};
 
 const App = () => {
   const renderElement = (props: any) => <Element {...props} />;
@@ -356,21 +356,19 @@ const App = () => {
             }
           })
         );
-
-        // batch(() => {
-        //   setStore("version", (prev) => (prev += 1));
-        // });
       }
       setStore("version", (prev) => (prev += 1));
 
       console.log("Running Weakmap Updates");
-      // editor().children.forEach((n, index) => {
-      //   if (SlateElement.isElement(n)) {
-      //     console.log("Updating Element Weakmaps", n, index, editor());
-      //     NODE_TO_INDEX.set(n, index);
-      //     NODE_TO_PARENT.set(n, editor());
-      //   }
-      // });
+      // This fixes the bug where selection is abnormal because the index of these elements are changed but the
+      // weakmaps are not set because the effect in OutputElement is not called
+      editor().children.forEach((n, index) => {
+        if (SlateElement.isElement(n)) {
+          console.log("Updating Element Weakmaps", n, index, editor());
+          NODE_TO_INDEX.set(n, index);
+          NODE_TO_PARENT.set(n, editor());
+        }
+      });
     });
   }
 
