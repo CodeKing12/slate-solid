@@ -41,6 +41,8 @@ export type EditorStoreObj = {
   version: number;
 };
 
+console.log = function () {};
+
 const App = () => {
   const renderElement = (props: any) => <Element {...props} />;
   const renderLeaf = (props: any) => <Leaf {...props} />;
