@@ -76,7 +76,6 @@ const String = (props: {
 
   return (
     <>
-      {/* <TextString text={props.leaf().text} /> */}
       <Switch
         fallback={
           <TextString text={props.leaf.text} reactive={props.reactiveText} />
@@ -95,13 +94,15 @@ const String = (props: {
             isMarkPlaceholder={isMarkPlaceholder()}
           />
         </Match>
-        <Match when={props.leaf.text === ""}>
+        <Match when={props.reactiveText.text === ""}>
           {/* COMPAT: If the text is empty, it's because it's on the edge of an inline
 					node, so we render a zero-width space so that the selection can be
         inserted next to it still. */}
           <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />
         </Match>
-        <Match when={props.isLast() && props.leaf.text.slice(-1) === "\n"}>
+        <Match
+          when={props.isLast() && props.reactiveText.text.slice(-1) === "\n"}
+        >
           {/* COMPAT: Browsers will collapse trailing new lines at the end of blocks,
 					so we need to add an extra trailing new lines to prevent that. */}
           <TextString
@@ -123,10 +124,6 @@ export const TextString = (props: {
   isTrailing?: boolean;
   reactive: Text;
 }) => {
-  onMount(() => {
-    console.log("New Text String", props.text);
-  });
-
   const merge = mergeProps(
     {
       isTrailing: false,
@@ -135,21 +132,30 @@ export const TextString = (props: {
   );
   let ref: HTMLSpanElement | undefined;
   const [initialText] = createSignal(
-    `${merge.text ?? ""}${merge.isTrailing ? "\n" : ""}`
+    `${merge.reactive.text ?? ""}${merge.isTrailing ? "\n" : ""}`
   );
+
+  onMount(() => console.log("Creating new TextString  - special string"));
 
   const stringReactive = captureStoreUpdates(props.reactive);
 
   createRenderEffect(
-    on([stringReactive], () => {
+    on([stringReactive, () => props.reactive.text], () => {
       // null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
       console.log(
-        "Updating string",
+        "Updating string  - special string",
         props.text,
         props.reactive,
         props.reactive.text
       );
       const textWithTrailing = `${merge.reactive.text ?? ""}${merge.isTrailing ? "\n" : ""}`;
+      console.log(
+        "TextString Ref-special string",
+        textWithTrailing,
+        ref?.textContent,
+        ref,
+        initialText()
+      );
 
       if (ref && ref.textContent !== textWithTrailing) {
         ref.textContent = textWithTrailing;
@@ -159,6 +165,10 @@ export const TextString = (props: {
       // intentionally not specifying dependencies, so that this effect runs on every render
       // as this effectively replaces "specifying the text in the virtual DOM under the <span> below" on each render
     })
+  );
+
+  onCleanup(() =>
+    console.log("Removing TextString - special string: ", props.reactive.text)
   );
 
   return (
@@ -189,6 +199,9 @@ export const ZeroWidthString = (props: {
     },
     props
   );
+
+  onMount(() => console.log("Creating new ZeroWidthString - special string"));
+  onCleanup(() => console.log("Removing ZeroWidthString - special string"));
 
   const attributes: () => {
     "data-slate-zero-width": string;
