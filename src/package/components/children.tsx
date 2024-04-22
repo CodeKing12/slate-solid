@@ -31,7 +31,13 @@ import {
   createSignal,
   on,
 } from "solid-js";
-import { OutputElement, OutputText } from "./output";
+import {
+  OutputElement,
+  OutputText,
+  TempOutputElement,
+  TempOutputText,
+} from "./output";
+import { captureStoreUpdates } from "@solid-primitives/deep";
 
 /**
  * Children.
@@ -54,9 +60,12 @@ const Children = (props: {
     !editor.isInline(props.node) &&
     Editor.hasInlines(editor, props.node);
 
-  createEffect(() =>
-    console.log("Reactive Children Updated: ", props.reactive?.children),
-  );
+  const storeUpdates = captureStoreUpdates(props.reactive);
+  // createRenderEffect(
+  //   on([storeUpdates], () => {
+  //     console.log("Finished <Children /> updates");
+  //   })
+  // );
 
   return (
     <>
@@ -65,40 +74,46 @@ const Children = (props: {
 				by={(_, index) => SolidEditor.findKey(editor, props.node.children[index])}
 			> */}
       <For each={props.reactive?.children}>
-        {(_, index) => (
-          <Switch>
-            <Match when={Element.isElement(props.node.children[index()])}>
-              <OutputElement
-                index={index()}
-                parent={props.node}
-                n={props.node.children[index()] as BaseElement}
-                reactive={props.reactive.children[index()]}
-                path={path().concat(index())}
-                selection={props.selection}
-                decorations={props.decorations}
-                renderElement={props.renderElement}
-                renderPlaceholder={props.renderPlaceholder}
-                renderLeaf={props.renderLeaf}
-              />
-            </Match>
-            <Match when={!Element.isElement(props.node.children[index()])}>
-              <OutputText
-                index={index()}
-                text={props.node.children[index()] as SlateText}
-                reactive={props.reactive.children[index()]}
-                isLast={
-                  isLeafBlock() && index() === props.node.children.length - 1
-                }
-                parent={props.node}
-                path={path().concat(index())}
-                selection={props.selection}
-                decorations={props.decorations}
-                renderPlaceholder={props.renderPlaceholder}
-                renderLeaf={props.renderLeaf}
-              />
-            </Match>
-          </Switch>
-        )}
+        {(reactiveItem, index) => {
+          console.log(props.reactive?.children);
+          if (props.node.children[index()]) {
+            return (
+              <Switch>
+                <Match when={Element.isElement(props.node.children[index()])}>
+                  <OutputElement
+                    index={index()}
+                    parent={props.node}
+                    n={props.node.children[index()] as BaseElement}
+                    reactive={reactiveItem}
+                    path={path().concat(index())}
+                    selection={props.selection}
+                    decorations={props.decorations}
+                    renderElement={props.renderElement}
+                    renderPlaceholder={props.renderPlaceholder}
+                    renderLeaf={props.renderLeaf}
+                  />
+                </Match>
+                <Match when={!Element.isElement(props.node.children[index()])}>
+                  <OutputText
+                    index={index()}
+                    text={props.node.children[index()] as SlateText}
+                    reactive={reactiveItem}
+                    isLast={
+                      isLeafBlock() &&
+                      index() === props.node.children.length - 1
+                    }
+                    parent={props.node}
+                    path={path().concat(index())}
+                    selection={props.selection}
+                    decorations={props.decorations}
+                    renderPlaceholder={props.renderPlaceholder}
+                    renderLeaf={props.renderLeaf}
+                  />
+                </Match>
+              </Switch>
+            );
+          }
+        }}
       </For>
       {/* </Key> */}
     </>

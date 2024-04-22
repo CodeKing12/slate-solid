@@ -1,6 +1,15 @@
 import getDirection from "direction";
-import { JSX, createEffect, createRenderEffect, mergeProps } from "solid-js";
+import {
+  JSX,
+  Match,
+  Switch,
+  createEffect,
+  createRenderEffect,
+  createSignal,
+  mergeProps,
+} from "solid-js";
 import { Editor, Element as SlateElement, Node, Range } from "slate";
+import { Element as ElementRender } from "../../App";
 // index index-fix
 import { SolidEditor } from "../plugin/solid-editor";
 import { useReadOnly } from "../hooks/use-read-only";
@@ -36,20 +45,22 @@ export interface ElementComponentProps {
   renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element;
   renderLeaf?: (props: RenderLeafProps) => JSX.Element;
   selection: Range | null;
+  index: number;
 }
 
 const Element = (props: ElementComponentProps) => {
-  console.log("Re-created <Element/>");
+  console.log("Re-created <Element/>", props.element);
 
+  const [keepRef, setRef] = createSignal();
   createEffect(() =>
-    console.log("<Element/> Updated", props.element, props.reactive),
+    console.log("<Element/> Updated", props.element, props.reactive, keepRef())
   );
 
   const merge = mergeProps(
     {
       renderElement: (p: RenderElementProps) => <DefaultElement {...p} />,
     },
-    props,
+    props
   );
   const editor = useSlateStatic();
   const readOnly = useReadOnly();
@@ -63,7 +74,7 @@ const Element = (props: ElementComponentProps) => {
         "Setting Element.tsx Key_To_Element: ",
         key(),
         ref,
-        merge.element,
+        merge.element
       );
       KEY_TO_ELEMENT?.set(key(), ref);
       NODE_TO_ELEMENT.set(merge.element, ref);
@@ -72,6 +83,7 @@ const Element = (props: ElementComponentProps) => {
       KEY_TO_ELEMENT?.delete(key());
       NODE_TO_ELEMENT.delete(merge.element);
     }
+    setRef(ref);
   };
 
   // let children: JSX.Element = useChildren({
@@ -166,13 +178,57 @@ const Element = (props: ElementComponentProps) => {
     }
   });
 
+  const style = () => ({ "text-align": props.reactive.align });
+
   return (
     <>
-      {merge.renderElement({
+      {/* {merge.renderElement({
         attributes,
         children: children,
         element: merge.element,
-      })}
+      })} */}
+      <Switch>
+        <Match when={merge.reactive.type === "block-quote"}>
+          <blockquote style={style()} {...attributes}>
+            {children}
+          </blockquote>
+        </Match>
+        <Match when={merge.reactive.type === "bulleted-list"}>
+          <ul style={style()} {...attributes}>
+            {children}
+          </ul>
+        </Match>
+        <Match when={merge.reactive.type === "heading-one"}>
+          <h1 style={style()} {...attributes}>
+            {children}
+          </h1>
+        </Match>
+        <Match when={merge.reactive.type === "heading-two"}>
+          <h2 style={style()} {...attributes}>
+            {children}
+          </h2>
+        </Match>
+        <Match when={merge.reactive.type === "list-item"}>
+          <li style={style()} {...attributes}>
+            {children}
+          </li>
+        </Match>
+        <Match when={merge.reactive.type === "numbered-list"}>
+          <ol style={style()} {...attributes}>
+            {children}
+          </ol>
+        </Match>
+        <Match when={merge.reactive.type}>
+          <p style={style()} {...attributes}>
+            {children}
+          </p>
+        </Match>
+      </Switch>
+      {/* <ElementRender
+        attributes={attributes}
+        children={children}
+        element={merge.element}
+      /> */}
     </>
   );
 };

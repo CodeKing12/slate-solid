@@ -49,27 +49,27 @@ import {
 export interface SolidEditor extends BaseEditor {
   hasEditableTarget: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => target is DOMNode;
   hasRange: (editor: SolidEditor, range: Range) => boolean;
   hasSelectableTarget: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => boolean;
   hasTarget: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => target is DOMNode;
   insertData: (data: DataTransfer) => void;
   insertFragmentData: (data: DataTransfer) => boolean;
   insertTextData: (data: DataTransfer) => boolean;
   isTargetInsideNonReadonlyVoid: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => boolean;
   setFragmentData: (
     data: DataTransfer,
-    originEvent?: "drag" | "copy" | "cut",
+    originEvent?: "drag" | "copy" | "cut"
   ) => void;
 }
 
@@ -113,7 +113,7 @@ export interface SolidEditorInterface {
    * Find the path of Slate node.
    */
   // Beware isEditor is needed in case we can't pass in the editor object, but rather the children property only
-  findPath: (editor: SolidEditor, node: Node, isEditor?: boolean) => Path;
+  findPath: (editor: SolidEditor, node: Node) => Path;
 
   /**
    * Focus the editor.
@@ -131,7 +131,7 @@ export interface SolidEditorInterface {
   hasDOMNode: (
     editor: SolidEditor,
     target: DOMNode,
-    options?: { editable?: boolean },
+    options?: { editable?: boolean }
   ) => boolean;
 
   /**
@@ -139,7 +139,7 @@ export interface SolidEditorInterface {
    */
   hasEditableTarget: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => target is DOMNode;
 
   /**
@@ -152,7 +152,7 @@ export interface SolidEditorInterface {
    */
   hasSelectableTarget: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => boolean;
 
   /**
@@ -160,7 +160,7 @@ export interface SolidEditorInterface {
    */
   hasTarget: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => target is DOMNode;
 
   /**
@@ -198,7 +198,7 @@ export interface SolidEditorInterface {
    */
   isTargetInsideNonReadonlyVoid: (
     editor: SolidEditor,
-    target: EventTarget | null,
+    target: EventTarget | null
   ) => boolean;
 
   /**
@@ -207,7 +207,7 @@ export interface SolidEditorInterface {
   setFragmentData: (
     editor: SolidEditor,
     data: DataTransfer | null,
-    originEvent?: "drag" | "copy" | "cut",
+    originEvent?: "drag" | "copy" | "cut"
   ) => void;
 
   /**
@@ -244,7 +244,7 @@ export interface SolidEditorInterface {
     options: {
       exactMatch: boolean;
       suppressThrow: T;
-    },
+    }
   ) => T extends true ? Point | null : Point;
 
   /**
@@ -256,7 +256,7 @@ export interface SolidEditorInterface {
     options: {
       exactMatch: boolean;
       suppressThrow: T;
-    },
+    }
   ) => T extends true ? Range | null : Range;
 }
 
@@ -314,7 +314,7 @@ export const SolidEditor: SolidEditorInterface = {
 
     if (x == null || y == null) {
       throw new Error(
-        `Cannot resolve a Slate range from a DOM event: ${event}`,
+        `Cannot resolve a Slate range from a DOM event: ${event}`
       );
     }
 
@@ -362,7 +362,7 @@ export const SolidEditor: SolidEditorInterface = {
 
     if (!domRange) {
       throw new Error(
-        `Cannot resolve a Slate range from a DOM event: ${event}`,
+        `Cannot resolve a Slate range from a DOM event: ${event}`
       );
     }
 
@@ -386,7 +386,7 @@ export const SolidEditor: SolidEditorInterface = {
     return key;
   },
 
-  findPath: (editor, node, isEditor) => {
+  findPath: (editor, node) => {
     const path: Path = [];
     let child = node;
 
@@ -395,7 +395,7 @@ export const SolidEditor: SolidEditorInterface = {
       const parent = NODE_TO_PARENT.get(child);
 
       if (parent == null) {
-        if (isEditor || Editor.isEditor(child)) {
+        if (Editor.isEditor(child)) {
           return path;
         } else {
           break;
@@ -413,7 +413,7 @@ export const SolidEditor: SolidEditorInterface = {
     }
 
     throw new Error(
-      `Unable to find the path for Slate node: ${Scrubber.stringify(node)}`,
+      `Unable to find the path for Slate node: ${Scrubber.stringify(node)}`
     );
   },
 
@@ -428,7 +428,7 @@ export const SolidEditor: SolidEditorInterface = {
     // Retry until retries are exhausted or editor is focused.
     if (options.retries <= 0) {
       throw new Error(
-        "Could not set focus, editor seems stuck with pending operations",
+        "Could not set focus, editor seems stuck with pending operations"
       );
     }
     if (editor.operations.length > 0) {
@@ -566,7 +566,7 @@ export const SolidEditor: SolidEditorInterface = {
 
     if (!domNode) {
       throw new Error(
-        `Cannot resolve a DOM node from Slate node: ${Scrubber.stringify(node)}`,
+        `Cannot resolve a DOM node from Slate node: ${Scrubber.stringify(node)}`
       );
     }
 
@@ -636,7 +636,7 @@ export const SolidEditor: SolidEditorInterface = {
 
     if (!domPoint) {
       throw new Error(
-        `Cannot resolve a DOM point from Slate point: ${Scrubber.stringify(point)}`,
+        `Cannot resolve a DOM point from Slate point: ${Scrubber.stringify(point)}`
       );
     }
 
@@ -695,7 +695,7 @@ export const SolidEditor: SolidEditorInterface = {
     options: {
       exactMatch: boolean;
       suppressThrow: T;
-    },
+    }
   ): T extends true ? Point | null : Point => {
     const { exactMatch, suppressThrow } = options;
     const [nearestNode, nearestOffset] = exactMatch
@@ -733,10 +733,10 @@ export const SolidEditor: SolidEditorInterface = {
           const contents = range.cloneContents();
           const removals = [
             ...Array.prototype.slice.call(
-              contents.querySelectorAll("[data-slate-zero-width]"),
+              contents.querySelectorAll("[data-slate-zero-width]")
             ),
             ...Array.prototype.slice.call(
-              contents.querySelectorAll("[contenteditable=false]"),
+              contents.querySelectorAll("[contenteditable=false]")
             ),
           ];
 
@@ -826,7 +826,7 @@ export const SolidEditor: SolidEditorInterface = {
         const slateNode = SolidEditor.toSlateNode(editor, node);
         let { path, offset } = Editor.start(
           editor,
-          SolidEditor.findPath(editor, slateNode),
+          SolidEditor.findPath(editor, slateNode)
         );
 
         if (!node.querySelector("[data-slate-leaf]")) {
@@ -842,7 +842,7 @@ export const SolidEditor: SolidEditorInterface = {
         return null as T extends true ? Point | null : Point;
       }
       throw new Error(
-        `Cannot resolve a Slate point from DOM point: ${domPoint}`,
+        `Cannot resolve a Slate point from DOM point: ${domPoint}`
       );
     }
 
@@ -860,7 +860,7 @@ export const SolidEditor: SolidEditorInterface = {
     options: {
       exactMatch: boolean;
       suppressThrow: T;
-    },
+    }
   ): T extends true ? Range | null : Range => {
     const { exactMatch, suppressThrow } = options;
     const el = isDOMSelection(domRange)
@@ -894,10 +894,10 @@ export const SolidEditor: SolidEditorInterface = {
 
             // This should never fail as "The HTMLElement interface represents any HTML element."
             const firstNode = getLastChildren(
-              <HTMLElement>firstNodeRow.children[firstRange.startOffset],
+              <HTMLElement>firstNodeRow.children[firstRange.startOffset]
             );
             const lastNode = getLastChildren(
-              <HTMLElement>lastNodeRow.children[lastRange.startOffset],
+              <HTMLElement>lastNodeRow.children[lastRange.startOffset]
             );
 
             // Zero, as we allways take the right one as the anchor point
@@ -970,7 +970,7 @@ export const SolidEditor: SolidEditorInterface = {
       focusOffset == null
     ) {
       throw new Error(
-        `Cannot resolve a Slate range from DOM range: ${domRange}`,
+        `Cannot resolve a Slate range from DOM range: ${domRange}`
       );
     }
 
@@ -1003,8 +1003,9 @@ export const SolidEditor: SolidEditorInterface = {
       {
         exactMatch,
         suppressThrow,
-      },
+      }
     );
+    console.log(anchor, anchorNode, anchorOffset);
     if (!anchor) {
       return null as T extends true ? Range | null : Range;
     }

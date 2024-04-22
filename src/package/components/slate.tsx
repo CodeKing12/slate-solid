@@ -8,6 +8,7 @@ import {
   splitProps,
 } from "solid-js";
 import {
+  BaseSelection,
   Descendant,
   Editor,
   Node,
@@ -36,7 +37,11 @@ export const Slate = (props: {
   children: JSX.Element;
   onChange?: (value: Descendant[]) => void;
   onSelectionChange?: (selection?: any) => void;
-  onValueChange?: (value: Descendant[]) => void;
+  onValueChange?: (
+    value: Descendant[],
+    selection: BaseSelection,
+    operation: Operation[]
+  ) => void;
 }) => {
   const [split, rest] = splitProps(props, [
     "editor",
@@ -52,17 +57,19 @@ export const Slate = (props: {
     if (!Node.isNodeList(split.initialValue)) {
       throw new Error(
         `[Slate] initialValue is invalid! Expected a list of elements but got: ${Scrubber.stringify(
-          split.initialValue,
-        )}`,
+          split.initialValue
+        )}`
       );
     }
     if (!Editor.isEditor(split.editor())) {
       throw new Error(
-        `[Slate] editor is invalid! You passed: ${Scrubber.stringify(split.editor())}`,
+        `[Slate] editor is invalid! You passed: ${Scrubber.stringify(split.editor())}`
       );
     }
     // split.editor().children = split.initialValue;
-    Transforms.insertNodes(split.editor(), split.initialValue);
+    Transforms.insertNodes(split.editor(), split.initialValue, {
+      at: [split.editor().children.length],
+    });
     // split.onValueChange?.(split.initialValue);
     Object.assign(split.editor(), rest);
     // split.setEditor("children", split.initialValue);
@@ -70,7 +77,7 @@ export const Slate = (props: {
     return { v: 0, editor: split.editor } as SlateContextValue;
   }
   const [context, setContext] = createSignal<SlateContextValue>(
-    getInitialContextValue(),
+    getInitialContextValue()
   );
 
   const selectorData = () => useSelectorContext(split.editor());
@@ -86,14 +93,24 @@ export const Slate = (props: {
     if (split.onChange) {
       split.onChange(split.editor().children);
     }
-    console.log("Operation", options?.operation);
+    console.log(
+      "Operation",
+      options?.operation?.type,
+      options?.operation,
+      options,
+      split.editor().operations
+    );
 
     switch (options?.operation?.type) {
       case "set_selection":
         split.onSelectionChange?.(split.editor().selection);
-      // break;
+        break;
       default:
-        split.onValueChange?.(split.editor().children);
+        split.onValueChange?.(
+          split.editor().children,
+          split.editor().selection,
+          split.editor().operations
+        );
     }
 
     selectorData()().onChange(split.editor());
@@ -109,7 +126,7 @@ export const Slate = (props: {
   });
 
   const [isFocused, setIsFocused] = createSignal(
-    SolidEditor.isFocused(split.editor()),
+    SolidEditor.isFocused(split.editor())
   );
 
   createEffect(() => {

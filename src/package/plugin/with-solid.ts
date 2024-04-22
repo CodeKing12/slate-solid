@@ -48,10 +48,30 @@ import { SolidEditor } from "./solid-editor";
 
 export const withSolid = <T extends BaseEditor>(
   editor: T,
-  clipboardFormatKey = "x-slate-fragment",
+  clipboardFormatKey = "x-slate-fragment"
 ): T & SolidEditor => {
   const e = editor as T & SolidEditor;
-  const { apply, onChange, deleteBackward, addMark, removeMark } = e;
+  const {
+    apply,
+    onChange,
+    deleteBackward,
+    addMark,
+    removeMark,
+    insertNodes,
+    insertNode,
+  } = e;
+
+  e.insertNodes = (nodes, options) => {
+    console.log("Insertion Function called: ", nodes, options);
+
+    insertNodes(nodes, options);
+  };
+
+  e.insertNode = (node, options) => {
+    console.log("Singular Insertion called: ", node, options);
+
+    insertNode(node, options);
+  };
 
   // The WeakMap which maps a key to a specific HTMLElement must be scoped to the editor instance to
   // avoid collisions between editors in the DOM that share the same value.
@@ -105,7 +125,7 @@ export const withSolid = <T extends BaseEditor>(
         const parentElementRange = Editor.range(
           e,
           parentBlockPath,
-          e.selection.anchor,
+          e.selection.anchor
         );
 
         const currentLineRange = findCurrentLineRange(e, parentElementRange);
@@ -136,7 +156,7 @@ export const withSolid = <T extends BaseEditor>(
     if (pendingSelection) {
       EDITOR_TO_PENDING_SELECTION.set(
         e,
-        transformPendingRange(e, pendingSelection, op),
+        transformPendingRange(e, pendingSelection, op)
       );
     }
 
@@ -180,7 +200,7 @@ export const withSolid = <T extends BaseEditor>(
       case "move_node": {
         const commonPath = Path.common(
           Path.parent(op.path),
-          Path.parent(op.newPath),
+          Path.parent(op.newPath)
         );
         matches.push(...getMatches(e, commonPath));
 
@@ -212,7 +232,7 @@ export const withSolid = <T extends BaseEditor>(
         key,
         matches,
         path,
-        editor.operations,
+        editor.operations
       );
       NODE_TO_KEY.set(node, key);
     }
@@ -280,7 +300,7 @@ export const withSolid = <T extends BaseEditor>(
       (zw) => {
         const isNewline = zw.getAttribute("data-slate-zero-width") === "n";
         zw.textContent = isNewline ? "\n" : "";
-      },
+      }
     );
 
     // Set a `data-slate-fragment` attribute on a non-empty node, so it shows up
@@ -362,6 +382,7 @@ export const withSolid = <T extends BaseEditor>(
     // pass. So we have to use this unstable API to ensure it batches them.
     // (2019/12/03)
     // https://github.com/facebook/react/issues/14259#issuecomment-439702367
+    console.log("EDiTOR_CHANGED", options);
 
     const onContextChange = EDITOR_TO_ON_CHANGE.get(e);
 
