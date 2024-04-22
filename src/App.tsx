@@ -372,22 +372,22 @@ const App = () => {
     });
   }
 
-  function runMe() {
-    Transforms.insertNodes(
-      editor(),
-      {
-        type: "paragraph",
-        children: [
-          {
-            text: "kokld - " + store.children.length,
-          },
-        ],
-      },
-      {
-        at: [1],
-      }
-    );
-  }
+  // function runMe() {
+  //   Transforms.insertNodes(
+  //     editor(),
+  //     {
+  //       type: "paragraph",
+  //       children: [
+  //         {
+  //           text: "kokld - " + store.children.length,
+  //         },
+  //       ],
+  //     },
+  //     {
+  //       at: [1],
+  //     }
+  //   );
+  // }
 
   return (
     <ExampleContent>
@@ -477,7 +477,7 @@ const App = () => {
             }
           }}
         />
-        <button onclick={runMe}>Test References</button>
+        {/* <button onclick={runMe}>Test References</button> */}
       </Slate>
     </ExampleContent>
   );
