@@ -40,28 +40,35 @@ const String = (props: {
     !editor.isInline(props.parent) &&
     Editor.string(editor, parentPath()) === "";
 
-  const storeReactive = captureStoreUpdates(props.leaf);
+  const storeReactive = captureStoreUpdates(props.reactiveText);
 
   onMount(() => {
     console.log("New String Element", props.text.text);
   });
 
   createEffect(() => {
-    console.log("Updated String", props.reactiveText.text);
+    console.log("Updated createEffect String -- ", props.reactiveText.text);
   });
 
-  createEffect(
-    on([storeReactive], () => {
-      console.log(
-        "Updated String",
-        props.reactiveText.text,
-        props.reactiveText,
-        props.leaf,
-        props.leaf.text,
-        storeReactive()
-      );
-    })
-  );
+  createRenderEffect(() => {
+    console.log(
+      "Updated createRenderEffect String -- ",
+      props.reactiveText.text
+    );
+  });
+
+  // createRenderEffect(
+  //   on([storeReactive], () => {
+  //     console.log(
+  //       "Updated String",
+  //       props.reactiveText.text,
+  //       props.reactiveText,
+  //       props.leaf,
+  //       props.leaf.text,
+  //       storeReactive()
+  //     );
+  //   })
+  // );
 
   onCleanup(() =>
     console.log("Removing: ", props.reactiveText.text, props.leaf.text)
@@ -71,7 +78,9 @@ const String = (props: {
     <>
       {/* <TextString text={props.leaf().text} /> */}
       <Switch
-        fallback={<TextString text={props.leaf.text} reactive={props.leaf} />}
+        fallback={
+          <TextString text={props.leaf.text} reactive={props.reactiveText} />
+        }
       >
         <Match when={editor.isVoid(props.parent)}>
           {/* COMPAT: Render text inside void nodes with a zero-width space. So the node can contain
@@ -95,7 +104,11 @@ const String = (props: {
         <Match when={props.isLast() && props.leaf.text.slice(-1) === "\n"}>
           {/* COMPAT: Browsers will collapse trailing new lines at the end of blocks,
 					so we need to add an extra trailing new lines to prevent that. */}
-          <TextString isTrailing text={props.leaf.text} reactive={props.leaf} />
+          <TextString
+            isTrailing
+            text={props.leaf.text}
+            reactive={props.reactiveText}
+          />
         </Match>
       </Switch>
     </>
@@ -127,7 +140,7 @@ export const TextString = (props: {
 
   const stringReactive = captureStoreUpdates(props.reactive);
 
-  createEffect(
+  createRenderEffect(
     on([stringReactive], () => {
       // null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
       console.log(
@@ -136,7 +149,7 @@ export const TextString = (props: {
         props.reactive,
         props.reactive.text
       );
-      const textWithTrailing = `${merge.text ?? ""}${merge.isTrailing ? "\n" : ""}`;
+      const textWithTrailing = `${merge.reactive.text ?? ""}${merge.isTrailing ? "\n" : ""}`;
 
       if (ref && ref.textContent !== textWithTrailing) {
         ref.textContent = textWithTrailing;

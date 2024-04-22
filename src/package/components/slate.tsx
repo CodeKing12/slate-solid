@@ -101,17 +101,22 @@ export const Slate = (props: {
       split.editor().operations
     );
 
-    switch (options?.operation?.type) {
-      case "set_selection":
-        split.onSelectionChange?.(split.editor().selection);
-        break;
-      default:
-        split.onValueChange?.(
-          split.editor().children,
-          split.editor().selection,
-          split.editor().operations
-        );
-    }
+    split.onValueChange?.(
+      split.editor().children,
+      split.editor().selection,
+      split.editor().operations
+    );
+    // switch (options?.operation?.type) {
+    //   case "set_selection":
+    //     split.onSelectionChange?.(split.editor().selection);
+    //     break;
+    //   default:
+    //     split.onValueChange?.(
+    //       split.editor().children,
+    //       split.editor().selection,
+    //       split.editor().operations
+    //     );
+    // }
 
     selectorData()().onChange(split.editor());
   };

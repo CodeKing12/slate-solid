@@ -87,8 +87,13 @@ const App = () => {
   ) {
     console.log("Editor Change Called", operations, selection, children);
     batch(() => {
+      console.log(
+        "All Operations",
+        operations,
+        editor().children,
+        editor().selection
+      );
       for (let i = 0; i < operations.length; i++) {
-        console.log("All Operations", operations);
         const operation = operations[i];
         setStore(
           produce((state) => {

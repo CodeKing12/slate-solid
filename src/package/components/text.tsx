@@ -52,7 +52,7 @@ const Text = (props: TextComponentProps) => {
   // console.log("Here are the Leaves: ", leaves());
 
   console.log("New Text element");
-  createEffect(
+  createRenderEffect(
     on([reactiveUpdates], () => {
       console.log(
         "<Text/> Updated",
@@ -61,6 +61,7 @@ const Text = (props: TextComponentProps) => {
         props.text
       );
 
+      console.log(leaves[0]);
       setLeaves(
         0,
         reconcile(SlateText.decorations(props.text, props.decorations)[0])
@@ -68,7 +69,8 @@ const Text = (props: TextComponentProps) => {
 
       // setLeaves(SlateText.decorations(props.text, props.decorations));
       // setKey(SolidEditor.findKey(editor, props.text));
-      console.log(SlateText.decorations(props.text, props.decorations));
+      console.log(leaves[0]);
+      // console.log(SlateText.decorations(props.text, props.decorations));
     })
   );
 
