@@ -350,7 +350,9 @@ const App = () => {
 
               case "set_selection": {
                 console.log("Operation setSelection: ", selection);
-                state.selection = selection;
+                // state.selection = selection;
+                // Fixes recursion bug
+                state.selection = cloneDeep(selection);
                 break;
               }
             }
