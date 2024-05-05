@@ -34,8 +34,9 @@ const String = (props: {
   const parentPath = () => Path.parent(path());
   const isMarkPlaceholder = () => Boolean(props.leaf[MARK_PLACEHOLDER_SYMBOL]);
 
+  // We want it to update when the leaf from the <Text/> component updates, instead of when the children store updates
   const isLastNodeInEmptyBlock = () =>
-    props.reactiveText.text === "" &&
+    props.leaf.text === "" &&
     props.parent.children[props.parent.children.length - 1] === props.text &&
     !editor.isInline(props.parent) &&
     Editor.string(editor, parentPath()) === "";
@@ -47,13 +48,20 @@ const String = (props: {
   });
 
   createEffect(() => {
-    console.log("Updated createEffect String -- ", props.reactiveText.text);
+    console.log(
+      "Updated createEffect String -- ",
+      // props.reactiveText.text,
+      props.leaf.text,
+      props.leaf
+    );
   });
 
   createRenderEffect(() => {
     console.log(
       "Updated createRenderEffect String -- ",
-      props.reactiveText.text
+      // props.reactiveText.text,
+      props.leaf.text,
+      props.leaf
     );
   });
 
@@ -70,16 +78,12 @@ const String = (props: {
   //   })
   // );
 
-  onCleanup(() =>
-    console.log("Removing: ", props.reactiveText.text, props.leaf.text)
-  );
+  onCleanup(() => console.log("Removing: ", props.leaf.text));
 
   return (
     <>
       <Switch
-        fallback={
-          <TextString text={props.leaf.text} reactive={props.reactiveText} />
-        }
+        fallback={<TextString text={props.leaf.text} reactive={props.leaf} />}
       >
         <Match when={editor.isVoid(props.parent)}>
           {/* COMPAT: Render text inside void nodes with a zero-width space. So the node can contain
@@ -94,22 +98,16 @@ const String = (props: {
             isMarkPlaceholder={isMarkPlaceholder()}
           />
         </Match>
-        <Match when={props.reactiveText.text === ""}>
+        <Match when={props.leaf.text === ""}>
           {/* COMPAT: If the text is empty, it's because it's on the edge of an inline
 					node, so we render a zero-width space so that the selection can be
         inserted next to it still. */}
           <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder()} />
         </Match>
-        <Match
-          when={props.isLast() && props.reactiveText.text.slice(-1) === "\n"}
-        >
+        <Match when={props.isLast() && props.leaf.text.slice(-1) === "\n"}>
           {/* COMPAT: Browsers will collapse trailing new lines at the end of blocks,
 					so we need to add an extra trailing new lines to prevent that. */}
-          <TextString
-            isTrailing
-            text={props.leaf.text}
-            reactive={props.reactiveText}
-          />
+          <TextString isTrailing text={props.leaf.text} reactive={props.leaf} />
         </Match>
       </Switch>
     </>

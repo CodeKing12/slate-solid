@@ -63,8 +63,8 @@ const Text = (props: TextComponentProps) => {
 
       console.log(leaves[0]);
       setLeaves(
-        0,
-        reconcile(SlateText.decorations(props.text, props.decorations)[0])
+        // 0,
+        reconcile(SlateText.decorations(props.text, props.decorations))
       );
 
       // setLeaves(SlateText.decorations(props.text, props.decorations));

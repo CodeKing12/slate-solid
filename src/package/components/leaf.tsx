@@ -80,6 +80,7 @@ const Leaf = (props: LeafProps) => {
   const [showPlaceholder, setShowPlaceholder] = createSignal(false);
   // using the ReactiveText store is more reactive than props.leaf. Props.leaf doesnt call the effect most times.
   const storeUpdates = captureStoreUpdates(merge.leaf);
+  const textUpdates = captureStoreUpdates(merge.reactiveText);
   const [styles, setStyles] = createSignal<JSX.CSSProperties>({});
   // <>testing initial load signal</>
 
@@ -186,16 +187,16 @@ const Leaf = (props: LeafProps) => {
     console.log("New Leaf Element");
   });
 
-  // createEffect(
-  //   on([storeUpdates], () => {
-  //     console.log(
-  //       "<Leaf/> Updated",
-  //       merge.leaf,
-  //       merge.text,
-  //       merge.reactiveText
-  //     );
-  //   })
-  // );
+  createRenderEffect(
+    on([storeUpdates, textUpdates], () => {
+      console.log(
+        "<Leaf/> Updated",
+        merge.leaf,
+        merge.text,
+        merge.reactiveText
+      );
+    })
+  );
 
   const editor = useSlateStatic();
   let placeholderResizeObserver: ResizeObserver | null = null;
